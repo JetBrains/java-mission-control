@@ -1,0 +1,82 @@
+plugins {
+    id "com.jfrog.bintray" version "1.8.4"
+    id 'maven-publish'
+    id 'java'
+}
+
+def originalDir = "$projectDir/target"
+
+def tmpDir = "$projectDir/tmp"
+
+task extractCommonClasses(type: Copy) {
+    from zipTree("$originalDir/common-$originalVersion" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/common/classes")
+}
+
+task extractFlightrecorderClasses(type: Copy) {
+    from zipTree("$originalDir/flightrecorder-$originalVersion" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/flightrecorder/classes")
+}
+
+task commonClassesJar(type: Jar) {
+    from extractCommonClasses
+    baseName 'jmc-common'
+    version mvnVersion
+}
+
+task flightrecorderClassesJar(type: Jar) {
+    from extractFlightrecorderClasses
+    baseName 'jmc-flightrecorder'
+    version mvnVersion
+}
+
+afterEvaluate {
+    task patchedBintrayUpload(dependsOn: subprojects.collect { it.bintrayUpload })
+}
+subprojects { subproject ->
+    apply plugin: 'com.jfrog.bintray'
+    apply plugin: 'maven-publish'
+    def projName = subproject.name
+    publishing {
+        publications {
+            commonPublication(MavenPublication) {
+                artifact commonClassesJar
+                groupId mvnGroupId
+                artifactId 'jmc-common'
+                version mvnVersion
+            }
+            flightrecorderPublication(MavenPublication) {
+                artifact flightrecorderClassesJar
+                groupId mvnGroupId
+                artifactId 'jmc-flightrecorder'
+                version mvnVersion
+
+                pom.withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', mvnGroupId)
+                    dependencyNode.appendNode('artifactId', 'jmc-common')
+                    dependencyNode.appendNode('version', mvnVersion)
+                    dependencyNode.appendNode('scope', 'compile')
+                }
+            }
+        }
+    }
+    bintray {
+        user = System.getenv('BINTRAY_USER')
+        key = System.getenv('BINTRAY_KEY')
+
+        publish = true
+        pkg {
+            repo = bintrayRepo
+            name = "jmc-" + projName
+            userOrg = bintrayUserOrg
+            version.name = mvnVersion
+        }
+        publications = [projName + "Publication"]
+    }
+}
