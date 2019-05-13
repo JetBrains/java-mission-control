@@ -1,0 +1,4 @@
+rootProject.name = 'jmc-publisher'
+include 'common'
+include 'flightrecorder'
+
