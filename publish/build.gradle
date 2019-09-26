@@ -15,11 +15,25 @@ task extractCommonClasses(type: Copy) {
     into new File("$tmpDir/common/classes")
 }
 
+task extractCommonSources(type: Copy) {
+    from zipTree("$originalDir/common-$originalVersion-sources" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/common/sources")
+}
+
 task extractFlightrecorderClasses(type: Copy) {
     from zipTree("$originalDir/flightrecorder-$originalVersion" + '.jar').matching {
         exclude 'META-INF/**'
     }
     into new File("$tmpDir/flightrecorder/classes")
+}
+
+task extractFlightrecorderSources(type: Copy) {
+    from zipTree("$originalDir/flightrecorder-$originalVersion-sources" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/flightrecorder/sources")
 }
 
 task commonClassesJar(type: Jar) {
@@ -28,9 +42,23 @@ task commonClassesJar(type: Jar) {
     version mvnVersion
 }
 
+task commonSourcesJar(type: Jar) {
+    from extractCommonSources
+    baseName 'jmc-common'
+    classifier = 'sources'
+    version mvnVersion
+}
+
 task flightrecorderClassesJar(type: Jar) {
     from extractFlightrecorderClasses
     baseName 'jmc-flightrecorder'
+    version mvnVersion
+}
+
+task flightrecorderSourcesJar(type: Jar) {
+    from extractFlightrecorderSources
+    baseName 'jmc-flightrecorder'
+    classifier = 'sources'
     version mvnVersion
 }
 
@@ -45,12 +73,14 @@ subprojects { subproject ->
         publications {
             commonPublication(MavenPublication) {
                 artifact commonClassesJar
+                artifact commonSourcesJar
                 groupId mvnGroupId
                 artifactId 'jmc-common'
                 version mvnVersion
             }
             flightrecorderPublication(MavenPublication) {
                 artifact flightrecorderClassesJar
+                artifact flightrecorderSourcesJar
                 groupId mvnGroupId
                 artifactId 'jmc-flightrecorder'
                 version mvnVersion
