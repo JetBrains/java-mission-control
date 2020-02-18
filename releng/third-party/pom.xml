@@ -399,7 +399,7 @@
 	<repositories>
 		<repository>
 			<id>OPS4j</id>
-			<url>http://repository.ops4j.org/maven2/</url>
+			<url>https://repository.ops4j.org/maven2/</url>
 		</repository>
 	</repositories>
 </project>
