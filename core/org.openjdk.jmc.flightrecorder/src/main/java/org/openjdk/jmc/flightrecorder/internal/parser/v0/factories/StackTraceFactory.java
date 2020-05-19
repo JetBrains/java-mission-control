@@ -62,10 +62,12 @@ final class StackTraceFactory implements IPoolFactory<IMCStackTrace> {
 	private final int m_fieldCount;
 
 	private final CanonicalConstantMap<IMCStackTrace> traceMap;
+	private final CanonicalConstantMap<IMCFrame> frameMap;
 
-	public StackTraceFactory(ValueDescriptor[] traceDescriptors, CanonicalConstantMap<IMCStackTrace> traceMap)
+	public StackTraceFactory(ValueDescriptor[] traceDescriptors, CanonicalConstantMap<IMCStackTrace> traceMap, CanonicalConstantMap<IMCFrame> frameMap)
 			throws InvalidJfrFileException {
 		this.traceMap = traceMap;
+		this.frameMap = frameMap;
 		m_frameIndex = ValueDescriptor.getIndex(traceDescriptors, "frames"); //$NON-NLS-1$
 		m_truncateIndex = ValueDescriptor.getIndex(traceDescriptors, "truncated"); //$NON-NLS-1$
 		if (m_frameIndex != -1) {
@@ -129,7 +131,7 @@ final class StackTraceFactory implements IPoolFactory<IMCStackTrace> {
 		IMCFrame.Type type = m_frameTypeIndex != -1
 				? ParserToolkit.parseFrameType((String) frameObject[m_frameTypeIndex]) : IMCFrame.Type.UNKNOWN;
 		Integer bci = m_bciIndex != -1 ? ((Number) frameObject[m_bciIndex]).intValue() : null;
-		return new MCFrame(method, bci, line, type);
+		return frameMap.canonicalize(new MCFrame(method, bci, line, type));
 	}
 
 	@Override
