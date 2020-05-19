@@ -49,7 +49,7 @@ public final class GlobalObjectPool {
 			return new MethodFactory(dataStructure, (CanonicalConstantMap) context.getConstantPool(name));
 		}
 		if ("StackTrace".equals(name)) { //$NON-NLS-1$
-			return new StackTraceFactory(dataStructure, (CanonicalConstantMap) context.getConstantPool(name));
+			return new StackTraceFactory(dataStructure, (CanonicalConstantMap) context.getConstantPool(name), (CanonicalConstantMap) context.getConstantPool("Frame"));
 		}
 		if ("JavaThread".equals(name)) { //$NON-NLS-1$
 			return new JavaThreadFactory(dataStructure);
