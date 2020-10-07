@@ -5,6 +5,8 @@
     <option name="originalFiles">
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
+        <option value="$PROJECT_DIR$/core/org.openjdk.jmc.common/pom.xml" />
+        <option value="$PROJECT_DIR$/core/org.openjdk.jmc.flightrecorder/pom.xml" />
       </list>
     </option>
   </component>
