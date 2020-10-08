@@ -9,7 +9,7 @@
         </IssueNavigationLink>
         <IssueNavigationLink>
           <option name="issueRegexp" value="TPV-\d+" />
-          <option name="linkRegexp" value="https://bugs.openjdk.java.net/browse/$0" />
+          <option name="linkRegexp" value="https://youtrack.jetbrains.com/issue/$0" />
         </IssueNavigationLink>
       </list>
     </option>
