@@ -128,10 +128,17 @@ final class StackTraceFactory implements IPoolFactory<IMCStackTrace> {
 	private IMCFrame createFrame(Object[] frameObject) {
 		IMCMethod method = m_methodIndex != -1 ? (IMCMethod) frameObject[m_methodIndex] : null;
 		Integer line = m_lineNumberIndex != -1 ? ((Number) frameObject[m_lineNumberIndex]).intValue() : null;
-		IMCFrame.Type type = m_frameTypeIndex != -1
-				? ParserToolkit.parseFrameType((String) frameObject[m_frameTypeIndex]) : IMCFrame.Type.UNKNOWN;
+		IMCFrame.Type type;
+		String rawType;
+		if (m_frameTypeIndex != -1) {
+			rawType = (String) frameObject[m_frameTypeIndex];
+			type = ParserToolkit.parseFrameType(rawType);
+		} else {
+			type = IMCFrame.Type.UNKNOWN;
+			rawType = type.toString();
+		}
 		Integer bci = m_bciIndex != -1 ? ((Number) frameObject[m_bciIndex]).intValue() : null;
-		return frameMap.canonicalize(new MCFrame(method, bci, line, type));
+		return frameMap.canonicalize(new MCFrame(method, bci, line, type, rawType));
 	}
 
 	@Override

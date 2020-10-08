@@ -661,13 +661,13 @@ class StructTypes {
 		}
 
 		@Override
+		public String getRawType() {
+			return (String) type;
+		}
+
+		@Override
 		public Type getType() {
-			Object t = type;
-			if (!(t instanceof Type)) {
-				t = ParserToolkit.parseFrameType((String) t);
-				type = t;
-			}
-			return (Type) t;
+			return ParserToolkit.parseFrameType(getRawType());
 		}
 
 		@Override
