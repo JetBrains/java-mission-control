@@ -33,6 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.openjdk.jmc.common.unit.QuantityRange;
 import org.openjdk.jmc.flightrecorder.CouldNotLoadRecordingException;
@@ -43,11 +44,11 @@ import org.openjdk.jmc.flightrecorder.internal.parser.LoaderContext;
 
 public class ChunkLoaderV0 implements IChunkLoader {
 	private final ChunkStructure structure;
-	private final byte[] data;
+	private final ByteBuffer data;
 	private final LoaderContext context;
 	private final ChunkMetadata metadata;
 
-	private ChunkLoaderV0(ChunkStructure structure, byte[] data, LoaderContext context)
+	private ChunkLoaderV0(ChunkStructure structure, ByteBuffer data, LoaderContext context)
 			throws CouldNotLoadRecordingException {
 		this.structure = structure;
 		this.data = data;
@@ -76,19 +77,19 @@ public class ChunkLoaderV0 implements IChunkLoader {
 				eventParser.loadEvent(data, offset, eventTypeId);
 			}
 		}
-		return data;
+		return data.hasArray() ? data.array() : new byte[0];
 	}
 
 	public static IChunkLoader create(Chunk input, LoaderContext context)
 			throws IOException, CouldNotLoadRecordingException {
 		ChunkStructure structure = new ChunkStructure(input);
-		byte[] buffer = input.fill(structure.getChunkSize());
+		ByteBuffer buffer = input.fill(structure.getChunkSize());
 		return new ChunkLoaderV0(structure, buffer, context);
 	}
 
 	public static ChunkInfo getInfo(Chunk input, long position) throws IOException, CouldNotLoadRecordingException {
 		ChunkStructure structure = new ChunkStructure(input);
-		byte[] buffer = input.fill(structure.getChunkSize());
+		ByteBuffer buffer = input.fill(structure.getChunkSize());
 		ChunkMetadata metadata = new ChunkMetadata(buffer, structure.getMetadataOffset());
 		return new ChunkInfo(position, structure.getChunkSize(),
 				QuantityRange.createWithEnd(metadata.getStartTime(), metadata.getEndTime()));

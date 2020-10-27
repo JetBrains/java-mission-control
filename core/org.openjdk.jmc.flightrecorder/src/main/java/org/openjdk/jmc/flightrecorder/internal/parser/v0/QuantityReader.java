@@ -37,6 +37,8 @@ import org.openjdk.jmc.common.unit.IUnit;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
 
+import java.nio.ByteBuffer;
+
 class QuantityReader implements IValueReader {
 
 	private final IUnit unit;
@@ -48,7 +50,7 @@ class QuantityReader implements IValueReader {
 	}
 
 	@Override
-	public Object readValue(byte[] bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 		switch (dataType) {
 		case BYTE:
 		case U1:

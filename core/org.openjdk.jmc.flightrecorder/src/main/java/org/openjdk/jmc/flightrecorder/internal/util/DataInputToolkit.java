@@ -32,6 +32,8 @@
  */
 package org.openjdk.jmc.flightrecorder.internal.util;
 
+import java.nio.ByteBuffer;
+
 public class DataInputToolkit {
 
 	public static final byte BYTE_SIZE = 1;
@@ -42,6 +44,8 @@ public class DataInputToolkit {
 	public static final byte LONG_SIZE = 8;
 	public static final byte FLOAT_SIZE = 4;
 	public static final byte DOUBLE_SIZE = 8;
+
+	/////////////// For byte[]
 
 	public static int readUnsignedByte(byte[] bytes, int offset) {
 		return bytes[offset] & 0xFF;
@@ -94,5 +98,52 @@ public class DataInputToolkit {
 
 	public static boolean readBoolean(byte[] bytes, int offset) {
 		return bytes[offset] != 0;
+	}
+
+
+	/////////////// For ByteBuffer
+
+	public static int readUnsignedByte(ByteBuffer bytes, int offset) {
+		return Byte.toUnsignedInt(bytes.get(offset));
+	}
+
+	public static byte readByte(ByteBuffer bytes, int offset) {
+		return bytes.get(offset);
+	}
+
+	public static int readUnsignedShort(ByteBuffer bytes, int offset) {
+		return Short.toUnsignedInt(bytes.getShort(offset));
+	}
+	
+	public static short readShort(ByteBuffer bytes, int offset) {
+		return bytes.getShort(offset);
+	}
+
+	public static char readChar(ByteBuffer bytes, int offset) {
+		return (char) readUnsignedShort(bytes, offset);
+	}
+
+	public static long readUnsignedInt(ByteBuffer bytes, int index) {
+		return Integer.toUnsignedLong(bytes.getInt(index));
+	}
+
+	public static int readInt(ByteBuffer bytes, int index) {
+		return bytes.getInt(index);
+	}
+
+	public static long readLong(ByteBuffer bytes, int index) {
+		return bytes.getLong(index);
+	}
+
+	public static float readFloat(ByteBuffer bytes, int offset) {
+		return bytes.getFloat(offset);
+	}
+
+	public static double readDouble(ByteBuffer bytes, int offset) {
+		return bytes.getDouble(offset);
+	}
+
+	public static boolean readBoolean(ByteBuffer bytes, int offset) {
+		return bytes.get(offset) != 0;
 	}
 }

@@ -37,6 +37,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -56,6 +57,7 @@ import org.openjdk.jmc.flightrecorder.internal.parser.Chunk;
 import org.openjdk.jmc.flightrecorder.internal.parser.LoaderContext;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.ChunkLoaderV0;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ChunkLoaderV1;
+import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
 import org.openjdk.jmc.flightrecorder.parser.IParserExtension;
 import org.openjdk.jmc.flightrecorder.parser.ParserExtensionRegistry;
 
@@ -142,6 +144,34 @@ public final class FlightRecordingLoader {
 
 		};
 
+	}
+
+	public static IChunkSupplier createChunkSupplier(final ByteBuffer input)
+			throws CouldNotLoadRecordingException, IOException {
+		return new IChunkSupplier() {
+			int position = 0;
+			@Override
+			public Chunk getNextChunk(byte[] reusableBuffer) throws CouldNotLoadRecordingException, IOException {
+				if (position >= input.limit()) {
+					return null;
+				}
+				Chunk chunk = createChunkInput(input, position);
+				position += getChunkInfo(chunk, position).getChunkSize();
+				return chunk;
+			}
+		};
+	}
+
+	public static Chunk createChunkInput(ByteBuffer input, int position)
+			throws CouldNotLoadRecordingException {
+		int i = 0;
+		input.position(position);
+		while (DataInputToolkit.readUnsignedByte(input, position + i) == FLIGHT_RECORDER_MAGIC[i]) {
+			if (++i == FLIGHT_RECORDER_MAGIC.length) {
+				return new Chunk.ByteBufferChunk(input, position + FLIGHT_RECORDER_MAGIC.length);
+			}
+		}
+		throw new InvalidJfrFileException();
 	}
 
 	private static Chunk createChunkInput(DataInput input, int firstByte, byte[] reusableBuffer)

@@ -34,6 +34,7 @@ package org.openjdk.jmc.flightrecorder.internal.parser;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
@@ -46,7 +47,7 @@ public class Chunk {
 	private final DataInput input;
 	private final short majorVersion;
 	private final short minorVersion;
-	private int position;
+	protected int position;
 	private byte[] data;
 
 	/**
@@ -61,9 +62,17 @@ public class Chunk {
 		this.input = input;
 		this.data = reusableBuffer;
 		position = offset;
-		byte[] buffer = fill(offset + 2 * DataInputToolkit.SHORT_SIZE);
+		ByteBuffer buffer = fill(offset + 2 * DataInputToolkit.SHORT_SIZE);
 		majorVersion = DataInputToolkit.readShort(buffer, offset);
 		minorVersion = DataInputToolkit.readShort(buffer, offset + DataInputToolkit.SHORT_SIZE);
+	}
+
+	private Chunk(DataInput input, int offset, byte[] reusableBuffer, short majorVersion, short minorVersion) {
+		this.input = input;
+		this.data = reusableBuffer;
+		position = offset;
+		this.majorVersion = majorVersion;
+		this.minorVersion = minorVersion;
 	}
 
 	public short getMajorVersion() {
@@ -86,7 +95,7 @@ public class Chunk {
 	 *            position to fill buffer to
 	 * @return the current buffer for the chunk data
 	 */
-	public byte[] fill(long upToPosition) throws IOException, InvalidJfrFileException {
+	public ByteBuffer fill(long upToPosition) throws IOException, InvalidJfrFileException {
 		int fillUpTo = getArrayPosition(upToPosition);
 		if (data.length < fillUpTo) {
 			data = Arrays.copyOf(data, (int) (fillUpTo * 1.2));
@@ -95,7 +104,7 @@ public class Chunk {
 			input.readFully(data, position, fillUpTo - position);
 			position = fillUpTo;
 		}
-		return data;
+		return ByteBuffer.wrap(data);
 	}
 
 	/**
@@ -132,4 +141,34 @@ public class Chunk {
 		}
 	}
 
+	public static class ByteBufferChunk extends Chunk {
+		private final ByteBuffer data;
+
+		public ByteBufferChunk(ByteBuffer data, int offset) {
+			super(null, offset, null,
+					DataInputToolkit.readShort(data, offset),
+					DataInputToolkit.readShort(data, offset + DataInputToolkit.SHORT_SIZE));
+			this.data = data;
+			position = offset + 2 * DataInputToolkit.SHORT_SIZE;
+		}
+
+		public ByteBuffer fill(long upToPosition) throws IOException, InvalidJfrFileException {
+			int fillUpTo = getArrayPosition(upToPosition);
+			if (data.limit() < fillUpTo) {
+				throw new InvalidJfrFileException();
+			}
+			return data;
+		}
+
+		public void skip(long upToPosition) throws IOException, InvalidJfrFileException {
+			int skipUpTo = getArrayPosition(upToPosition);
+			if (skipUpTo > position) {
+				position = skipUpTo;
+			}
+		}
+
+		public byte[] getReusableBuffer() {
+			return data.hasArray() ? data.array() : new byte[0];
+		}
+	}
 }

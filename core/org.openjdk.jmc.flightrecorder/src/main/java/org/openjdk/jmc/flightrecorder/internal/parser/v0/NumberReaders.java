@@ -36,33 +36,35 @@ import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
 
+import java.nio.ByteBuffer;
+
 class NumberReaders {
 
-	static long readLong(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static long readLong(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readLong(bytes, offset.getAndIncrease(DataInputToolkit.LONG_SIZE));
 	}
 
-	static int readInt(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static int readInt(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readInt(bytes, offset.getAndIncrease(DataInputToolkit.INTEGER_SIZE));
 	}
 
-	static byte readByte(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static byte readByte(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readByte(bytes, offset.getAndIncrease(DataInputToolkit.BYTE_SIZE));
 	}
 
-	static short readShort(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static short readShort(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readShort(bytes, offset.getAndIncrease(DataInputToolkit.SHORT_SIZE));
 	}
 
-	static float readFloat(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static float readFloat(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readFloat(bytes, offset.getAndIncrease(DataInputToolkit.FLOAT_SIZE));
 	}
 
-	static double readDouble(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	static double readDouble(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return DataInputToolkit.readDouble(bytes, offset.getAndIncrease(DataInputToolkit.DOUBLE_SIZE));
 	}
 
-	static long readKey(byte[] data, Offset offset, DataType keyType) throws InvalidJfrFileException {
+	static long readKey(ByteBuffer data, Offset offset, DataType keyType) throws InvalidJfrFileException {
 		switch (keyType) {
 		case U1:
 		case BYTE:

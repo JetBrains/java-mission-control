@@ -38,6 +38,8 @@ import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
 
+import java.nio.ByteBuffer;
+
 /**
  * Reads an array with element of a certain type from a byte array.
  */
@@ -52,7 +54,7 @@ final class ArrayReader implements IValueReader {
 	}
 
 	@Override
-	public Object readValue(byte[] bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 		int arraySize = readArraySize(bytes, offset.get());
 		offset.increase(DataType.INTEGER.getSize());
 		if (arraySize > header.getChunkSize()) {
@@ -67,7 +69,7 @@ final class ArrayReader implements IValueReader {
 
 	private static final int UNREASONABLE_ARRAY_LENGTH = 10000000; // Very high limit, only intended to avoid OOM
 
-	private static int readArraySize(byte[] data, int offset) throws InvalidJfrFileException {
+	private static int readArraySize(ByteBuffer data, int offset) throws InvalidJfrFileException {
 		int length = DataInputToolkit.readInt(data, offset);
 		if (length < 0 || length > UNREASONABLE_ARRAY_LENGTH) {
 			throw new InvalidJfrFileException();

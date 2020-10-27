@@ -33,6 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
@@ -48,18 +49,18 @@ class SeekableInputStream implements IDataInput {
 	private static final byte STRING_ENCODING_CHAR_ARRAY = 4;
 	private static final byte STRING_ENCODING_LATIN1_BYTE_ARRAY = 5;
 
-	private final byte[] buffer;
+	private final ByteBuffer buffer;
 	private int pos;
 
-	public SeekableInputStream(byte[] buffer) {
+	public SeekableInputStream(ByteBuffer buffer) {
 		this.buffer = buffer;
 	}
 
 	public void seek(long pos) throws IOException {
-		if (pos >= 0 && pos < buffer.length) {
+		if (pos >= 0 && pos < buffer.limit()) {
 			this.pos = (int) pos;
 		} else {
-			throw new IOException("Seeking for " + pos + " in buffer of length " + buffer.length); //$NON-NLS-1$ //$NON-NLS-2$
+			throw new IOException("Seeking for " + pos + " in buffer of length " + buffer.limit()); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
 
@@ -68,9 +69,9 @@ class SeekableInputStream implements IDataInput {
 	}
 
 	public void readFully(byte[] dst, int off, int len) {
-		int start = pos;
+		buffer.position(pos);
+		buffer.get(dst, off, len);
 		pos += len;
-		System.arraycopy(buffer, start, dst, off, len);
 	}
 
 	@Override
@@ -160,9 +161,9 @@ class SeekableInputStream implements IDataInput {
 		case STRING_ENCODING_UTF8_BYTE_ARRAY:
 		case STRING_ENCODING_LATIN1_BYTE_ARRAY:
 			int size = readInt();
-			int start = pos;
-			pos += size;
-			return new String(buffer, start, size,
+			byte[] buf = new byte[size];
+			readFully(buf);
+			return new String(buf,
 					encoding == STRING_ENCODING_UTF8_BYTE_ARRAY ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1);
 		case STRING_ENCODING_CHAR_ARRAY:
 			int charCount = readInt();
@@ -212,7 +213,7 @@ class SeekableInputStream implements IDataInput {
 
 	private static class CompressedIntsDataInput extends SeekableInputStream {
 
-		public CompressedIntsDataInput(byte[] buffer) {
+		public CompressedIntsDataInput(ByteBuffer buffer) {
 			super(buffer);
 		}
 
@@ -260,7 +261,7 @@ class SeekableInputStream implements IDataInput {
 
 	}
 
-	static SeekableInputStream build(byte[] data, boolean compressedInts) {
+	static SeekableInputStream build(ByteBuffer data, boolean compressedInts) {
 		return compressedInts ? new CompressedIntsDataInput(data) : new SeekableInputStream(data);
 	}
 

@@ -33,10 +33,12 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
+import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
 
 /**
  * Reads a UTF-8 string.
@@ -46,31 +48,28 @@ final class UTFStringParser implements IArrayElementParser<String>, IValueReader
 	public static final UTFStringParser INSTANCE = new UTFStringParser();
 
 	@Override
-	public Object readValue(byte[] bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 		return readString(bytes, offset);
 	}
 
 	@Override
-	public String readElement(byte[] bytes, Offset offset) throws InvalidJfrFileException {
+	public String readElement(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
 		return readString(bytes, offset);
 	}
 
-	public static String readString(byte[] bytes, Offset offset) throws InvalidJfrFileException {
-		int len = readUnsignedShort(bytes, offset.get());
+	public static String readString(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
+		int len = DataInputToolkit.readUnsignedShort(bytes, offset.get());
 		offset.increase(2);
 		int index = offset.get();
 		offset.increase(len);
+		byte[] buf = new byte[len];
+		bytes.position(index);
+		bytes.get(buf);
 		try {
-			return new String(bytes, index, len, CHARSET);
+			return new String(buf, CHARSET);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	private static int readUnsignedShort(byte[] bytes, int offset) {
-		int ch1 = (bytes[offset] & 0xff);
-		int ch2 = (bytes[offset + 1] & 0xff);
-		return (ch1 << 8) + (ch2 << 0);
 	}
 
 	@Override

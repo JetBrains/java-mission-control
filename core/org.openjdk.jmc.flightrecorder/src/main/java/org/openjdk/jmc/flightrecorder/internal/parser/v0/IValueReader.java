@@ -35,6 +35,8 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 
+import java.nio.ByteBuffer;
+
 interface IValueReader {
 
 	/**
@@ -48,7 +50,7 @@ interface IValueReader {
 	 *            the timestamp of the object to read
 	 * @return the parsed object
 	 */
-	Object readValue(byte[] bytes, Offset offset, long timestamp) throws InvalidJfrFileException;
+	Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException;
 
 	/**
 	 * @return the content type of the created objects

@@ -38,6 +38,8 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataStructure;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.EventTypeDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ProducerDescriptor;
 
+import java.nio.ByteBuffer;
+
 /**
  * Parses a producer
  */
@@ -45,7 +47,7 @@ final class ProducerParser implements IArrayElementParser<ProducerDescriptor> {
 	private static final TypedArrayParser<String> RELATIONS_PARSER = new TypedArrayParser<>(UTFStringParser.INSTANCE);
 
 	@Override
-	public ProducerDescriptor readElement(byte[] data, Offset offset) throws InvalidJfrFileException {
+	public ProducerDescriptor readElement(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
 		int id = NumberReaders.readInt(data, offset);
 		String name = UTFStringParser.readString(data, offset);
 		String desc = UTFStringParser.readString(data, offset);

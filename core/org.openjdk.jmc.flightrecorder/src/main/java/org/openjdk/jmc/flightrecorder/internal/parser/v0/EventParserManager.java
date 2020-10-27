@@ -32,6 +32,7 @@
  */
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,7 +103,7 @@ class EventParserManager {
 		eventTypes.put(LOST_EVENT_TYPE_INDEX, createBufferLostEntry(context.getSinkFactory()));
 	}
 
-	void loadEvent(byte[] data, Offset offset, int eventTypeId) throws InvalidJfrFileException {
+	void loadEvent(ByteBuffer data, Offset offset, int eventTypeId) throws InvalidJfrFileException {
 		EventTypeEntry ep = eventTypes.get(eventTypeId);
 		if (ep == null) {
 			throw new IllegalArgumentException("Event type " + eventTypeId + " is not described in the file"); //$NON-NLS-1$ //$NON-NLS-2$

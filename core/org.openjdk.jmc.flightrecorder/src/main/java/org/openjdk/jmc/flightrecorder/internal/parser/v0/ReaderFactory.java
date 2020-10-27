@@ -50,6 +50,8 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ValueDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
 import org.openjdk.jmc.flightrecorder.internal.util.JfrInternalConstants;
 
+import java.nio.ByteBuffer;
+
 class ReaderFactory {
 
 	private final FastAccessNumberMap<ConstantMap> constants = new FastAccessNumberMap<>(100, 5);
@@ -57,7 +59,7 @@ class ReaderFactory {
 	private final FastAccessNumberMap<LabeledIdentifier> types = new FastAccessNumberMap<>();
 	private final ChunkStructure header;
 
-	ReaderFactory(ChunkMetadata metadata, byte[] chunkData, LoaderContext context, ChunkStructure header)
+	ReaderFactory(ChunkMetadata metadata, ByteBuffer chunkData, LoaderContext context, ChunkStructure header)
 			throws InvalidJfrFileException {
 		this.metadata = metadata;
 		this.header = header;
@@ -97,7 +99,7 @@ class ReaderFactory {
 		}
 	}
 
-	long readTicksTimestamp(byte[] data, Offset offset) throws InvalidJfrFileException {
+	long readTicksTimestamp(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
 		return metadata.asNanoTimestamp(NumberReaders.readLong(data, offset));
 	}
 
@@ -191,7 +193,7 @@ class ReaderFactory {
 		}
 
 		@Override
-		public Object readValue(byte[] bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+		public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 			long typeId = NumberReaders.readKey(bytes, offset, dataType);
 			return types.get(typeId);
 		}

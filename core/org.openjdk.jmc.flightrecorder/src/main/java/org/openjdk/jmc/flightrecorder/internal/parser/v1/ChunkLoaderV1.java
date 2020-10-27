@@ -33,6 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.openjdk.jmc.flightrecorder.CouldNotLoadRecordingException;
@@ -49,10 +50,10 @@ public class ChunkLoaderV1 implements IChunkLoader {
 	private final static long CONSTANT_POOL_EVENT_TYPE = 1;
 
 	private final ChunkStructure header;
-	private final byte[] data;
+	private final ByteBuffer data;
 	private final LoaderContext context;
 
-	public ChunkLoaderV1(ChunkStructure header, byte[] data, LoaderContext context) {
+	public ChunkLoaderV1(ChunkStructure header, ByteBuffer data, LoaderContext context) {
 		this.header = header;
 		this.data = data;
 		this.context = context;
@@ -92,7 +93,7 @@ public class ChunkLoaderV1 implements IChunkLoader {
 			}
 			index += size;
 		}
-		return data;
+		return data.hasArray() ? data.array() : new byte[0];
 	}
 
 	private static long readConstantPoolEvent(IDataInput input, TypeManager manager)
@@ -115,7 +116,7 @@ public class ChunkLoaderV1 implements IChunkLoader {
 	public static IChunkLoader create(Chunk input, LoaderContext context)
 			throws IOException, CouldNotLoadRecordingException {
 		ChunkStructure header = new ChunkStructure(input);
-		byte[] data = input.fill(header.getChunkSize());
+		ByteBuffer data = input.fill(header.getChunkSize());
 		return new ChunkLoaderV1(header, data, context);
 	}
 

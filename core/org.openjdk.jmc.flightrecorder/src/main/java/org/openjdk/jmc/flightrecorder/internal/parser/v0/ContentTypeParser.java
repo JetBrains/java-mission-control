@@ -39,6 +39,8 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ValueDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.util.ParserToolkit;
 
+import java.nio.ByteBuffer;
+
 final class ContentTypeParser implements IArrayElementParser<ContentTypeDescriptor> {
 	private final DataStructure[] dataStructures;
 
@@ -47,7 +49,7 @@ final class ContentTypeParser implements IArrayElementParser<ContentTypeDescript
 	}
 
 	@Override
-	public ContentTypeDescriptor readElement(byte[] data, Offset offset) throws InvalidJfrFileException {
+	public ContentTypeDescriptor readElement(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
 		int constantPoolIndex = NumberReaders.readInt(data, offset);
 		String name = UTFStringParser.readString(data, offset);
 		String description = UTFStringParser.readString(data, offset);

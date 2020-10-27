@@ -32,6 +32,7 @@
  */
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -119,7 +120,7 @@ class ConstantMap {
 		}
 	}
 
-	void readValue(byte[] data, Offset offset, long timestamp) throws InvalidJfrFileException {
+	void readValue(ByteBuffer data, Offset offset, long timestamp) throws InvalidJfrFileException {
 		long key = NumberReaders.readKey(data, offset, keyType);
 		put(key, valueReader.readValue(data, offset, timestamp), timestamp);
 	}
