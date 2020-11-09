@@ -146,29 +146,13 @@ public final class FlightRecordingLoader {
 
 	}
 
-	public static IChunkSupplier createChunkSupplier(final ByteBuffer input)
-			throws CouldNotLoadRecordingException, IOException {
-		return new IChunkSupplier() {
-			int position = 0;
-			@Override
-			public Chunk getNextChunk(byte[] reusableBuffer) throws CouldNotLoadRecordingException, IOException {
-				if (position >= input.limit()) {
-					return null;
-				}
-				Chunk chunk = createChunkInput(input, position);
-				position += getChunkInfo(chunk, position).getChunkSize();
-				return chunk;
-			}
-		};
-	}
-
 	public static Chunk createChunkInput(ByteBuffer input, int position)
 			throws CouldNotLoadRecordingException {
 		int i = 0;
-		input.position(position);
 		while (DataInputToolkit.readUnsignedByte(input, position + i) == FLIGHT_RECORDER_MAGIC[i]) {
 			if (++i == FLIGHT_RECORDER_MAGIC.length) {
-				return new Chunk.ByteBufferChunk(input, position + FLIGHT_RECORDER_MAGIC.length);
+                input.position(position);
+				return new Chunk.ByteBufferChunk(input.slice(), FLIGHT_RECORDER_MAGIC.length);
 			}
 		}
 		throw new InvalidJfrFileException();
@@ -202,7 +186,7 @@ public final class FlightRecordingLoader {
 		return chunks;
 	}
 
-	private static ChunkInfo getChunkInfo(Chunk nextChunk, long nextChunkPos)
+	public static ChunkInfo getChunkInfo(Chunk nextChunk, long nextChunkPos)
 			throws CouldNotLoadRecordingException, IOException {
 		switch (nextChunk.getMajorVersion()) {
 		case VERSION_0:
