@@ -174,7 +174,7 @@ class RecordingImplTest {
 	void getBuiltinJDKType(TypesImpl.JDK target) {
 		TypeImpl type = recording.getType(target);
 		assertNotNull(type);
-		assertTrue(type.hasConstantPool());
+		assertTrue(type.hasConstantPool() || Types.JDK.STACK_FRAME.equals(target));
 	}
 
 	@ParameterizedTest

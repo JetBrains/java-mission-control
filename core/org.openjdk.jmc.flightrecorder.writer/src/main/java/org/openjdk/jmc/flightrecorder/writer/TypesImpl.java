@@ -136,7 +136,7 @@ public final class TypesImpl extends Types {
 		getOrAdd(JDK.FRAME_TYPE, builder -> {
 			builder.addField("description", Builtin.STRING);
 		});
-		getOrAdd(JDK.STACK_FRAME, builder -> {
+		getOrAdd(JDK.STACK_FRAME, false, builder -> {
 			builder.addField("method", methodType).addField("lineNumber", Builtin.INT)
 					.addField("bytecodeIndex", Builtin.INT).addField("type", JDK.FRAME_TYPE);
 		});
@@ -149,6 +149,11 @@ public final class TypesImpl extends Types {
 	@Override
 	public TypeImpl getOrAdd(Predefined type, Consumer<TypeStructureBuilder> builderCallback) {
 		return getOrAdd(type.getTypeName(), true, builderCallback);
+	}
+
+	@Override
+	public TypeImpl getOrAdd(Predefined type, boolean withConstantPool, Consumer<TypeStructureBuilder> builderCallback) {
+		return getOrAdd(type.getTypeName(), withConstantPool, builderCallback);
 	}
 
 	@Override

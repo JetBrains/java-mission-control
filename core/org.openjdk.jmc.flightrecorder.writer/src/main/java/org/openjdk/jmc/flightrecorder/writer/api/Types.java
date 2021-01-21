@@ -55,6 +55,19 @@ public abstract class Types {
 	/**
 	 * Retrieve the given type or create it a-new if it hasn't been added yet.
 	 *
+	 * @param type
+	 *            the type to retrieve
+	 * @param withConstantPool
+	 *            should the type values use an associated constant pool
+	 * @param builderCallback
+	 *            will be called lazily when the type is about to be initialized
+	 * @return the corresponding {@link Type type} instance
+	 */
+	public abstract Type getOrAdd(Predefined type, boolean withConstantPool, Consumer<TypeStructureBuilder> builderCallback);
+
+	/**
+	 * Retrieve the given type or create it a-new if it hasn't been added yet.
+	 *
 	 * @param name
 	 *            the name of the type to retrieve
 	 * @param builderCallback
