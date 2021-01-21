@@ -83,6 +83,7 @@ import org.openjdk.jmc.common.item.IItemIterable;
 import org.openjdk.jmc.common.item.IItemQuery;
 import org.openjdk.jmc.common.item.IMemberAccessor;
 import org.openjdk.jmc.common.item.IType;
+import org.openjdk.jmc.common.item.ItemCollectionToolkit;
 import org.openjdk.jmc.common.item.ItemFilters;
 import org.openjdk.jmc.common.item.ItemQueryBuilder;
 import org.openjdk.jmc.common.item.ItemToolkit;
@@ -102,7 +103,6 @@ import org.openjdk.jmc.flightrecorder.ui.IDisplayablePage;
 import org.openjdk.jmc.flightrecorder.ui.IPageContainer;
 import org.openjdk.jmc.flightrecorder.ui.IPageDefinition;
 import org.openjdk.jmc.flightrecorder.ui.IPageUI;
-import org.openjdk.jmc.flightrecorder.ui.ItemCollectionToolkit;
 import org.openjdk.jmc.flightrecorder.ui.StreamModel;
 import org.openjdk.jmc.flightrecorder.ui.common.AbstractDataPage;
 import org.openjdk.jmc.flightrecorder.ui.common.DataPageToolkit;
@@ -151,7 +151,7 @@ public class GarbageCollectionsPage extends AbstractDataPage {
 
 		@Override
 		public String[] getTopics(IState state) {
-			return new String[] {JfrRuleTopics.GARBAGE_COLLECTION_TOPIC};
+			return new String[] {JfrRuleTopics.GARBAGE_COLLECTION};
 		}
 
 		@Override
@@ -198,6 +198,8 @@ public class GarbageCollectionsPage extends AbstractDataPage {
 		IQuantity sumOfPauses;
 		IQuantity startTime;
 		IQuantity endTime;
+		IQuantity usedBeforeGC;
+		IQuantity usedAfterGC;
 		IQuantity usedDelta;
 		IQuantity committedDelta;
 		IQuantity usedMetaspaceDelta;
@@ -207,6 +209,8 @@ public class GarbageCollectionsPage extends AbstractDataPage {
 			this.type = type;
 			this.gcItem = gcItem;
 			referenceStatisticsData = new Object[REF_TYPE.length];
+			usedBeforeGC = UnitLookup.BYTE.quantity(0);
+			usedAfterGC = UnitLookup.BYTE.quantity(0);
 			usedDelta = UnitLookup.BYTE.quantity(0);
 			committedDelta = UnitLookup.BYTE.quantity(0);
 			usedMetaspaceDelta = UnitLookup.BYTE.quantity(0);
@@ -315,6 +319,10 @@ public class GarbageCollectionsPage extends AbstractDataPage {
 				columns.add(new ColumnBuilder(t.localizedName, "ReferenceStatisticsType-" + t.name(), //$NON-NLS-1$
 						o -> ((GC) o).getRefCount(t)).style(SWT.RIGHT).build());
 			}
+			columns.add(new ColumnBuilder(Messages.GarbageCollectionsPage_USED_HEAP_BEFORE_GC, "usedHeapBegoreGC", //$NON-NLS-1$
+					o -> ((GC) o).usedBeforeGC).style(SWT.RIGHT).build());
+			columns.add(new ColumnBuilder(Messages.GarbageCollectionsPage_USED_HEAP_AFTER_GC, "usedHeapAfterGC", //$NON-NLS-1$
+					o -> ((GC) o).usedAfterGC).style(SWT.RIGHT).build());
 			columns.add(new ColumnBuilder(Messages.GarbageCollectionsPage_USED_HEAP_DELTA, "usedHeapDelta", //$NON-NLS-1$
 					o -> ((GC) o).usedDelta).style(SWT.RIGHT).build());
 			columns.add(new ColumnBuilder(Messages.GarbageCollectionsPage_COMMITTED_HEAP_DELTA, "committedHeapDelta", //$NON-NLS-1$
@@ -654,10 +662,12 @@ public class GarbageCollectionsPage extends AbstractDataPage {
 					if (gc != null) {
 						String when = gcWhenAccessor.getMember(item);
 						if ("Before GC".equals(when)) { //$NON-NLS-1$
-							gc.usedDelta = gc.usedDelta.subtract(usedHeapAccessor.getMember(item));
+							gc.usedBeforeGC = usedHeapAccessor.getMember(item);
+							gc.usedDelta = gc.usedDelta.subtract(gc.usedBeforeGC);
 							gc.committedDelta = gc.committedDelta.subtract(committedHeapAccessor.getMember(item));
 						} else {
-							gc.usedDelta = gc.usedDelta.add(usedHeapAccessor.getMember(item));
+							gc.usedAfterGC = usedHeapAccessor.getMember(item);
+							gc.usedDelta = gc.usedDelta.add(gc.usedAfterGC);
 							gc.committedDelta = gc.committedDelta.add(committedHeapAccessor.getMember(item));
 						}
 					}

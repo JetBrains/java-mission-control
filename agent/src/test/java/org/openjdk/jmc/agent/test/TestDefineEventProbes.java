@@ -35,8 +35,10 @@ package org.openjdk.jmc.agent.test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import java.lang.management.ManagementFactory;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,12 +53,14 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.util.CheckClassAdapter;
+import org.objectweb.asm.util.TraceClassVisitor;
 import org.openjdk.jmc.agent.Field;
 import org.openjdk.jmc.agent.Method;
 import org.openjdk.jmc.agent.Parameter;
 import org.openjdk.jmc.agent.ReturnValue;
 import org.openjdk.jmc.agent.jfr.JFRTransformDescriptor;
-import org.openjdk.jmc.agent.jfrnext.impl.JFRNextEventClassGenerator;
+import org.openjdk.jmc.agent.jfr.impl.JFREventClassGenerator;
 import org.openjdk.jmc.agent.jmx.AgentControllerMXBean;
 import org.openjdk.jmc.agent.util.TypeUtils;
 
@@ -64,34 +68,24 @@ public class TestDefineEventProbes {
 
 	private static final String AGENT_OBJECT_NAME = "org.openjdk.jmc.jfr.agent:type=AgentController"; //$NON-NLS-1$
 	private static final String EVENT_ID = "demo.jfr.test6";
-	private static final String EVENT_NAME = "JFR Hello World Event 6 %TEST_NAME%";
+	private static final String EVENT_LABEL = "JFR Hello World Event 6 %TEST_NAME%";
 	private static final String EVENT_DESCRIPTION = "JFR Hello World Event 6 %TEST_NAME%";
 	private static final String EVENT_PATH = "demo/jfrhelloworldevent6";
 	private static final String EVENT_CLASS_NAME = "org.openjdk.jmc.agent.test.InstrumentMe";
 	private static final String METHOD_NAME = "printHelloWorldJFR6";
 	private static final String METHOD_DESCRIPTOR = "()D";
 
-	private static final String XML_DESCRIPTION = "<jfragent>"
-			+ "<events>"
-			+ "<event id=\"" + EVENT_ID + "\">"
-			+ "<name>" + EVENT_NAME + "</name>"
-			+ "<description>" + EVENT_DESCRIPTION + "</description>"
-			+ "<path>" + EVENT_PATH + "</path>"
-			+ "<stacktrace>true</stacktrace>"
-			+ "<class>" + EVENT_CLASS_NAME + "</class>"
-			+ "<method>"
-			+ "<name>" + METHOD_NAME + "</name>"
-			+ "<descriptor>" + METHOD_DESCRIPTOR + "</descriptor>"
-			+ "</method>"
-			+ "<location>WRAP</location>"
-			+ "</event>"
-			+ "</events>"
-			+ "</jfragent>";
+	private static final String XML_DESCRIPTION = "<jfragent>" + "<events>" + "<event id=\"" + EVENT_ID + "\">"
+			+ "<label>" + EVENT_LABEL + "</label>" + "<description>" + EVENT_DESCRIPTION + "</description>" + "<path>"
+			+ EVENT_PATH + "</path>" + "<stacktrace>true</stacktrace>" + "<class>" + EVENT_CLASS_NAME + "</class>"
+			+ "<method>" + "<name>" + METHOD_NAME + "</name>" + "<descriptor>" + METHOD_DESCRIPTOR + "</descriptor>"
+			+ "</method>" + "<location>WRAP</location>" + "</event>" + "</events>" + "</jfragent>";
 
 	@Test
 	public void testDefineEventProbes() throws Exception {
 		boolean exceptionThrown = false;
 		try {
+			//dumpByteCode(TestToolkit.getByteCode(InstrumentMe.class));
 			InstrumentMe.printHelloWorldJFR6();
 		} catch (Exception e) {
 			e.printStackTrace(System.err);
@@ -122,22 +116,23 @@ public class TestDefineEventProbes {
 		Method method = new Method(METHOD_NAME, METHOD_DESCRIPTOR);
 		Map<String, String> attributes = new HashMap<>();
 		attributes.put("path", EVENT_PATH);
-		attributes.put("name", EVENT_NAME);
+		attributes.put("label", EVENT_LABEL);
 		attributes.put("description", EVENT_DESCRIPTION);
 		ReturnValue retVal = new ReturnValue(null, "", null, null, null);
-		JFRTransformDescriptor eventTd = new JFRTransformDescriptor(EVENT_ID, TypeUtils.getInternalName(EVENT_CLASS_NAME),
-				method, attributes, new ArrayList<Parameter>(), retVal, new ArrayList<Field>());
+		JFRTransformDescriptor eventTd = new JFRTransformDescriptor(EVENT_ID,
+				TypeUtils.getInternalName(EVENT_CLASS_NAME), method, attributes, new ArrayList<Parameter>(), retVal,
+				new ArrayList<Field>());
 
 		ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 		ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM5, classWriter) {
 			@Override
-			public MethodVisitor visitMethod(int access, String name, String desc, String signature,
-					String[] exceptions) {
+			public MethodVisitor visitMethod(
+				int access, String name, String desc, String signature, String[] exceptions) {
 				MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
 				if (!name.equals("<init>")) {
 					return mv;
 				}
-				return new AdviceAdapter(Opcodes.ASM5, mv, access, name, "()V") {
+				return new AdviceAdapter(Opcodes.ASM8, mv, access, name, "()V") {
 					@Override
 					protected void onMethodExit(int opcode) {
 						mv.visitTypeInsn(Opcodes.NEW, "java/lang/RuntimeException");
@@ -152,7 +147,7 @@ public class TestDefineEventProbes {
 			}
 		};
 
-		byte[] eventClass = JFRNextEventClassGenerator.generateEventClass(eventTd, InstrumentMe.class);
+		byte[] eventClass = JFREventClassGenerator.generateEventClass(eventTd, InstrumentMe.class);
 		ClassReader reader = new ClassReader(eventClass);
 		reader.accept(classVisitor, 0);
 		byte[] modifiedEvent = classWriter.toByteArray();
@@ -161,7 +156,7 @@ public class TestDefineEventProbes {
 				ClassLoader.getSystemClassLoader(), null);
 	}
 
-	private void doDefineEventProbes(String xmlDescription) throws Exception  {
+	private void doDefineEventProbes(String xmlDescription) throws Exception {
 		AgentControllerMXBean mbean = JMX.newMXBeanProxy(ManagementFactory.getPlatformMBeanServer(),
 				new ObjectName(AGENT_OBJECT_NAME), AgentControllerMXBean.class, false);
 		mbean.defineEventProbes(xmlDescription);
@@ -169,5 +164,14 @@ public class TestDefineEventProbes {
 
 	public void test() {
 		//Dummy method for instrumentation
+	}
+
+	public void dumpByteCode(byte[] transformedClass) throws IOException {
+		// If we've asked for verbose information, we write the generated class
+		// and also dump the registry contents to stdout.
+		TraceClassVisitor visitor = new TraceClassVisitor(new PrintWriter(System.out));
+		CheckClassAdapter checkAdapter = new CheckClassAdapter(visitor);
+		ClassReader reader = new ClassReader(transformedClass);
+		reader.accept(checkAdapter, 0);
 	}
 }

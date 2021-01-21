@@ -46,9 +46,6 @@ import static org.openjdk.jmc.flightrecorder.flameview.Messages.FLAMEVIEW_SELECT
 import static org.openjdk.jmc.flightrecorder.flameview.Messages.FLAMEVIEW_SELECT_HTML_TOOLTIP_PACKAGE;
 import static org.openjdk.jmc.flightrecorder.flameview.Messages.FLAMEVIEW_SELECT_HTML_TOOLTIP_SAMPLES;
 import static org.openjdk.jmc.flightrecorder.flameview.MessagesUtils.getFlameviewMessage;
-import static org.openjdk.jmc.flightrecorder.flameview.MessagesUtils.getStacktraceMessage;
-import static org.openjdk.jmc.flightrecorder.stacktrace.Messages.STACKTRACE_UNCLASSIFIABLE_FRAME;
-import static org.openjdk.jmc.flightrecorder.stacktrace.Messages.STACKTRACE_UNCLASSIFIABLE_FRAME_DESC;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -61,6 +58,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -96,13 +95,13 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.openjdk.jmc.common.item.IItemCollection;
+import org.openjdk.jmc.common.item.ItemCollectionToolkit;
 import org.openjdk.jmc.common.util.StringToolkit;
+import org.openjdk.jmc.flightrecorder.flameview.FlameGraphJsonMarshaller;
 import org.openjdk.jmc.flightrecorder.flameview.FlameviewImages;
-import org.openjdk.jmc.flightrecorder.flameview.tree.TraceNode;
-import org.openjdk.jmc.flightrecorder.flameview.tree.TraceTreeUtils;
 import org.openjdk.jmc.flightrecorder.stacktrace.FrameSeparator;
 import org.openjdk.jmc.flightrecorder.stacktrace.FrameSeparator.FrameCategorization;
-import org.openjdk.jmc.flightrecorder.stacktrace.StacktraceModel;
+import org.openjdk.jmc.flightrecorder.stacktrace.tree.StacktraceTreeModel;
 import org.openjdk.jmc.flightrecorder.ui.FlightRecorderUI;
 import org.openjdk.jmc.flightrecorder.ui.common.ImageConstants;
 import org.openjdk.jmc.flightrecorder.ui.messages.internal.Messages;
@@ -114,8 +113,6 @@ import org.openjdk.jmc.ui.misc.DisplayToolkit;
 public class FlameGraphView extends ViewPart implements ISelectionListener {
 	private static final String DIR_ICONS = "icons/"; //$NON-NLS-1$
 	private static final String PLUGIN_ID = "org.openjdk.jmc.flightrecorder.flameview"; //$NON-NLS-1$
-	private static final String UNCLASSIFIABLE_FRAME = getStacktraceMessage(STACKTRACE_UNCLASSIFIABLE_FRAME);
-	private static final String UNCLASSIFIABLE_FRAME_DESC = getStacktraceMessage(STACKTRACE_UNCLASSIFIABLE_FRAME_DESC);
 	private static final String TABLE_COLUMN_COUNT = getFlameviewMessage(FLAMEVIEW_SELECT_HTML_TABLE_COUNT);
 	private static final String TABLE_COLUMN_EVENT_TYPE = getFlameviewMessage(FLAMEVIEW_SELECT_HTML_TABLE_EVENT_TYPE);
 	private static final String TOOLTIP_PACKAGE = getFlameviewMessage(FLAMEVIEW_SELECT_HTML_TOOLTIP_PACKAGE);
@@ -123,48 +120,54 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 	private static final String TOOLTIP_DESCRIPTION = getFlameviewMessage(FLAMEVIEW_SELECT_HTML_TOOLTIP_DESCRIPTION);
 	private static final String HTML_PAGE;
 	static {
-		// from: https://cdn.jsdelivr.net/gh/spiermar/d3-flame-graph@2.0.3/dist/d3-flamegraph.css
+		// from: https://cdn.jsdelivr.net/npm/d3-flame-graph@4.0.6/dist/d3-flamegraph.css
 		String cssD3Flamegraph = "jslibs/d3-flamegraph.css";
-		// from: https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js
-		String jsHtml5shiv = "jslibs/html5shiv.min.js";
-		// from: https://oss.maxcdn.com/respond/1.4.2/respond.min.js
-		String jsRespond = "jslibs/respond.min.js";
-		// from: https://d3js.org/d3.v4.min.js
-		String jsD3V4 = "jslibs/d3.v4.min.js";
-		// from: https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.9.1/d3-tip.min.js
-		String jsD3Tip = "jslibs/d3-tip.min.js";
-		// from: https://cdn.jsdelivr.net/gh/spiermar/d3-flame-graph@2.0.3/dist/d3-flamegraph.min.js
-		String jsD3FlameGraph = "jslibs/d3-flamegraph.min.js";
+		// from: https://d3js.org/d3.v6.min.js
+		String jsD3V6 = "jslibs/d3.v6.min.js";
+		// from: https://cdn.jsdelivr.net/npm/d3-flame-graph@4.0.6/dist/d3-flamegraph-tooltip.js
+		String jsD3Tip = "jslibs/d3-flamegraph-tooltip.js";
+		// from: https://cdn.jsdelivr.net/npm/d3-flame-graph@4.0.6/dist/d3-flamegraph.js
+		String jsD3FlameGraph = "jslibs/d3-flamegraph.js";
 		// jmc flameview coloring, tooltip and other  functions
 		String jsFlameviewName = "flameview.js";
 		String cssFlameview = "flameview.css";
 
-		String jsIeLibraries = loadLibraries(jsHtml5shiv, jsRespond);
-		String jsD3Libraries = loadLibraries(jsD3V4, jsD3Tip, jsD3FlameGraph);
+		String jsD3 = loadLibraries(jsD3V6, jsD3FlameGraph, jsD3Tip);
 		String styleheets = loadLibraries(cssD3Flamegraph, cssFlameview);
 		String jsFlameviewColoring = fileContent(jsFlameviewName);
 
 		String magnifierIcon = getIconBase64(ImageConstants.ICON_MAGNIFIER);
 
-		// formatter arguments for the template: %1 - CSSs stylesheets, %2 - IE9 specific scripts,
-		// %3 - Search Icon Base64, %4 - 3rd party scripts, %5 - Flameview Coloring,
-		HTML_PAGE = String.format(fileContent("page.template"), styleheets, jsIeLibraries, magnifierIcon, jsD3Libraries,
-				jsFlameviewColoring);
+		// formatter arguments for the template: %1 - CSSs stylesheets,
+		// %2 - Search Icon Base64, %3 - 3rd party scripts, %4 - Flameview Coloring,
+		HTML_PAGE = String.format(fileContent("page.template"), styleheets, magnifierIcon, jsD3, jsFlameviewColoring);
 	}
 
-	private static final ExecutorService MODEL_EXECUTOR = Executors.newFixedThreadPool(1);
+	private static final int MODEL_EXECUTOR_THREADS_NUMBER = 3;
+	private static final ExecutorService MODEL_EXECUTOR = Executors.newFixedThreadPool(MODEL_EXECUTOR_THREADS_NUMBER,
+			new ThreadFactory() {
+				private ThreadGroup group = new ThreadGroup("FlameGraphModelCalculationGroup");
+				private AtomicInteger counter = new AtomicInteger();
+
+				@Override
+				public Thread newThread(Runnable r) {
+					Thread t = new Thread(group, r, "FlameGraphModelCalculation-" + counter.getAndIncrement());
+					t.setDaemon(true);
+					return t;
+				}
+			});
 	private FrameSeparator frameSeparator;
 
 	private Browser browser;
 	private SashForm container;
-	private TraceNode currentRoot;
-	private CompletableFuture<TraceNode> currentModelCalculator;
-	private boolean threadRootAtTop = true;
-	private boolean icicleViewActive = true;
-	private IItemCollection currentItems;
 	private GroupByAction[] groupByActions;
 	private GroupByFlameviewAction[] groupByFlameviewActions;
 	private ExportAction[] exportActions;
+	private boolean threadRootAtTop = true;
+	private boolean icicleViewActive = true;
+	private IItemCollection currentItems;
+	private volatile ModelState modelState = ModelState.NONE;
+	private ModelRebuildRunnable modelRebuildRunnable;
 
 	private enum GroupActionType {
 		THREAD_ROOT(Messages.STACKTRACE_VIEW_THREAD_ROOT, IAction.AS_RADIO_BUTTON, CoreImages.THREAD),
@@ -183,7 +186,10 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 			this.action = action;
 			this.imageDescriptor = imageDescriptor;
 		}
+	}
 
+	private enum ModelState {
+		NOT_STARTED, STARTED, FINISHED, NONE;
 	}
 
 	private class GroupByAction extends Action {
@@ -202,7 +208,7 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 			boolean newValue = isChecked() == GroupActionType.THREAD_ROOT.equals(actionType);
 			if (newValue != threadRootAtTop) {
 				threadRootAtTop = newValue;
-				rebuildModel(currentItems);
+				triggerRebuildTask(currentItems);
 			}
 		}
 	}
@@ -245,7 +251,6 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 			this.imageDescriptor = imageDescriptor;
 			this.disabledImageDescriptor = disabledImageDescriptor;
 		}
-
 	}
 
 	private class ExportAction extends Action {
@@ -268,6 +273,41 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 			case PRINT:
 				browser.execute("window.print()"); //$NON-NLS-1$
 				break;
+			}
+		}
+	}
+
+	private static class ModelRebuildRunnable implements Runnable {
+
+		private FlameGraphView view;
+		private IItemCollection items;
+		private volatile boolean isInvalid;
+
+		private ModelRebuildRunnable(FlameGraphView view, IItemCollection items) {
+			this.view = view;
+			this.items = items;
+		}
+
+		private void setInvalid() {
+			this.isInvalid = true;
+		}
+
+		@Override
+		public void run() {
+			view.modelState = ModelState.STARTED;
+			if (isInvalid) {
+				return;
+			}
+			StacktraceTreeModel treeModel = new StacktraceTreeModel(items, view.frameSeparator, !view.threadRootAtTop);
+			if (isInvalid) {
+				return;
+			}
+			String flameGraphJson = FlameGraphJsonMarshaller.toJson(treeModel);
+			if (isInvalid) {
+				return;
+			} else {
+				view.modelState = ModelState.FINISHED;
+				DisplayToolkit.inDisplayThread().execute(() -> view.setModel(items, flameGraphJson));
 			}
 		}
 	}
@@ -331,44 +371,36 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 	public void selectionChanged(IWorkbenchPart part, ISelection selection) {
 		if (selection instanceof IStructuredSelection) {
 			Object first = ((IStructuredSelection) selection).getFirstElement();
-			setItems(AdapterUtil.getAdapter(first, IItemCollection.class));
+			IItemCollection items = AdapterUtil.getAdapter(first, IItemCollection.class);
+			if (items == null) {
+				triggerRebuildTask(ItemCollectionToolkit.build(Stream.empty()));
+			} else if (!items.equals(currentItems)) {
+				triggerRebuildTask(items);
+			}
 		}
 	}
 
-	private void setItems(IItemCollection items) {
-		if (items != null) {
-			currentItems = items;
-			rebuildModel(items);
+	private void triggerRebuildTask(IItemCollection items) {
+		// Release old model calculation before building a new
+		if (modelRebuildRunnable != null) {
+			modelRebuildRunnable.setInvalid();
+		}
+
+		currentItems = items;
+		modelState = ModelState.NOT_STARTED;
+		modelRebuildRunnable = new ModelRebuildRunnable(this, items);
+		if (!modelRebuildRunnable.isInvalid) {
+			MODEL_EXECUTOR.execute(modelRebuildRunnable);
 		}
 	}
 
-	private void rebuildModel(IItemCollection items) {
-		// Release old model before building the new
-		if (currentModelCalculator != null) {
-			currentModelCalculator.cancel(true);
-		}
-		currentModelCalculator = getModelPreparer(items, frameSeparator, true);
-		currentModelCalculator.thenAcceptAsync(this::setModel, DisplayToolkit.inDisplayThread())
-				.exceptionally(FlameGraphView::handleModelBuildException);
-	}
-
-	private CompletableFuture<TraceNode> getModelPreparer(
-		final IItemCollection items, final FrameSeparator separator, final boolean materializeSelectedBranches) {
-		return CompletableFuture.supplyAsync(() -> {
-			StacktraceModel model = new StacktraceModel(threadRootAtTop, frameSeparator, items);
-			TraceNode root = TraceTreeUtils.createRootWithDescription(items, model.getRootFork().getBranchCount());
-			return TraceTreeUtils.createTree(root, model);
-		}, MODEL_EXECUTOR);
-	}
-
-	private void setModel(TraceNode root) {
-		if (!browser.isDisposed() && !root.equals(currentRoot)) {
-			currentRoot = root;
-			setViewerInput(root);
+	private void setModel(final IItemCollection items, final String json) {
+		if (ModelState.FINISHED.equals(modelState) && items.equals(currentItems) && !browser.isDisposed()) {
+			setViewerInput(json);
 		}
 	}
 
-	private void setViewerInput(TraceNode root) {
+	private void setViewerInput(String json) {
 		Stream.of(exportActions).forEach((action) -> action.setEnabled(false));
 		browser.setText(HTML_PAGE);
 		browser.addListener(SWT.Resize, event -> {
@@ -376,14 +408,22 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 		});
 
 		browser.addProgressListener(new ProgressAdapter() {
+			private boolean loaded = false;
+
+			@Override
+			public void changed(ProgressEvent event) {
+				if (loaded) {
+					browser.removeProgressListener(this);
+				}
+			}
+
 			@Override
 			public void completed(ProgressEvent event) {
-				browser.removeProgressListener(this);
 				browser.execute(String.format("configureTooltipText('%s', '%s', '%s', '%s', '%s');", TABLE_COLUMN_COUNT,
 						TABLE_COLUMN_EVENT_TYPE, TOOLTIP_PACKAGE, TOOLTIP_SAMPLES, TOOLTIP_DESCRIPTION));
-
-				browser.execute(String.format("processGraph(%s, %s);", toJSon(root), icicleViewActive));
+				browser.execute(String.format("processGraph(%s, %s);", json, icicleViewActive));
 				Stream.of(exportActions).forEach((action) -> action.setEnabled(true));
+				loaded = true;
 			}
 		});
 	}
@@ -444,70 +484,10 @@ public class FlameGraphView extends ViewPart implements ISelectionListener {
 			fos.write(bytes);
 			fos.close();
 		} catch (CancellationException e) {
-			// noop
+			// noop : model calculation is canceled when is still running
 		} catch (InterruptedException | ExecutionException | IOException e) {
 			FlightRecorderUI.getDefault().getLogger().log(Level.SEVERE, "Failed to save flame graph", e); //$NON-NLS-1$
 		}
-	}
-
-	private static Void handleModelBuildException(Throwable ex) {
-		if (!(ex.getCause() instanceof CancellationException)) {
-			FlightRecorderUI.getDefault().getLogger().log(Level.SEVERE, "Failed to build stacktrace view model", ex); //$NON-NLS-1$
-		}
-		return null;
-	}
-
-	private static String toJSon(TraceNode root) {
-		if (root == null) {
-			return "\"\"";
-		}
-		return render(root);
-	}
-
-	private static String render(TraceNode root) {
-		StringBuilder builder = new StringBuilder();
-		String rootNodeStart = createJsonRootTraceNode(root);
-		builder.append(rootNodeStart);
-		renderChildren(builder, root);
-		builder.append("]}");
-		return builder.toString();
-	}
-
-	private static void render(StringBuilder builder, TraceNode node) {
-		String start = UNCLASSIFIABLE_FRAME.equals(node.getName()) ? createJsonDescTraceNode(node)
-				: createJsonTraceNode(node);
-		builder.append(start);
-		renderChildren(builder, node);
-		builder.append("]}");
-	}
-
-	private static void renderChildren(StringBuilder builder, TraceNode node) {
-		for (int i = 0; i < node.getChildren().size(); i++) {
-			render(builder, node.getChildren().get(i));
-			if (i < node.getChildren().size() - 1) {
-				builder.append(",");
-			}
-		}
-	}
-
-	private static String createJsonRootTraceNode(TraceNode rootNode) {
-		return String.format("{%s,%s,%s, \"c\": [ ", toJSonKeyValue("n", rootNode.getName()), toJSonKeyValue("p", ""),
-				toJSonKeyValue("d", rootNode.getPackageName()));
-	}
-
-	private static String createJsonTraceNode(TraceNode node) {
-		return String.format("{%s,%s,%s, \"c\": [ ", toJSonKeyValue("n", node.getName()),
-				toJSonKeyValue("p", node.getPackageName()), toJSonKeyValue("v", String.valueOf(node.getValue())));
-	}
-
-	private static String createJsonDescTraceNode(TraceNode node) {
-		return String.format("{%s,%s,%s,%s, \"c\": [ ", toJSonKeyValue("n", node.getName()),
-				toJSonKeyValue("p", node.getPackageName()), toJSonKeyValue("d", UNCLASSIFIABLE_FRAME_DESC),
-				toJSonKeyValue("v", String.valueOf(node.getValue())));
-	}
-
-	private static String toJSonKeyValue(String key, String value) {
-		return "\"" + key + "\": " + "\"" + value + "\"";
 	}
 
 	private static String loadLibraries(String ... libs) {

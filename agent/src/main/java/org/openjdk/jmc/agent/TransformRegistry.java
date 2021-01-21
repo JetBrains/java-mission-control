@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
- * 
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The contents of this file are subject to the terms of either the Universal Permissive License
@@ -10,17 +10,17 @@
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted
  * provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this list of conditions
  * and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
  * conditions and the following disclaimer in the documentation and/or other materials provided with
  * the distribution.
- * 
+ *
  * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
  * endorse or promote products derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
  * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
@@ -46,11 +46,12 @@ public interface TransformRegistry {
 	boolean hasPendingTransforms(String className);
 
 	/**
-	 * Returns the list of {@link TransformDescriptor}s for the named class.
+	 * Returns the unmodifiable list of {@link TransformDescriptor}s for the named class.
 	 *
 	 * @param className
 	 *            the class for which to retrieve the transformation metadata.
-	 * @return the list of transformation metadata for the named class.
+	 * @return the list of transformation metadata for the named class; may be empty but never
+	 *         {@code null}.
 	 */
 	List<TransformDescriptor> getTransformData(String className);
 
@@ -62,31 +63,47 @@ public interface TransformRegistry {
 	Set<String> getClassNames();
 
 	/**
+	 * Returns the currently instrumented configuration.
+	 *
+	 * @return an XML snippet of the configuration.
+	 */
+	String getCurrentConfiguration();
+
+	/**
+	 * Set the current configuration that will be instrumented
+	 *
+	 * @param xmlDescription
+	 *            an XML snippet describing the current configuration
+	 */
+	void setCurrentConfiguration(String xmlDescription);
+
+	/**
 	 * Modifies class information in the registry according to the xml description.
 	 *
 	 * @param xmlDescription
-	 *           an XML snippet describing the wanted modifications.
-	 *
-	 * @return a list of {@link TransformDescriptor}s corresponding to the wanted transformations.
+	 *            an XML snippet describing the wanted modifications.
+	 * @return a set of class names associated with modified {@link TransformDescriptor}s.
 	 */
-	List<TransformDescriptor> modify(String xmlDescription);
+	Set<String> modify(String xmlDescription);
 
 	/**
 	 * Clears all classes and their corresponding transforms in the registry.
 	 *
 	 * @return the set of class names that were cleared.
 	 */
-	List<String> clearAllTransformData();
+	Set<String> clearAllTransformData();
 
 	/**
 	 * Signify classes are or are not being reverted to their pre instrumentation versions.
+	 *
 	 * @param shouldRevert
-	 *           true if class instrumentation should be reverted, false otherwise.
+	 *            true if class instrumentation should be reverted, false otherwise.
 	 */
 	void setRevertInstrumentation(boolean shouldRevert);
 
 	/**
 	 * Determines if classes should be reverted to their pre instrumentation versions.
+	 *
 	 * @return true, if classes should be reverted and false otherwise.
 	 */
 	boolean isRevertIntrumentation();

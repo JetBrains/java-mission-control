@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * 
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -106,6 +106,7 @@ import org.openjdk.jmc.common.item.IItemIterable;
 import org.openjdk.jmc.common.item.IItemQuery;
 import org.openjdk.jmc.common.item.IMemberAccessor;
 import org.openjdk.jmc.common.item.IType;
+import org.openjdk.jmc.common.item.ItemCollectionToolkit;
 import org.openjdk.jmc.common.item.ItemFilters;
 import org.openjdk.jmc.common.item.ItemToolkit;
 import org.openjdk.jmc.common.unit.IQuantity;
@@ -122,12 +123,10 @@ import org.openjdk.jmc.flightrecorder.jdk.JdkAggregators;
 import org.openjdk.jmc.flightrecorder.jdk.JdkAttributes;
 import org.openjdk.jmc.flightrecorder.jdk.JdkFilters;
 import org.openjdk.jmc.flightrecorder.jdk.JdkTypeIDs;
-import org.openjdk.jmc.flightrecorder.rules.Result;
+import org.openjdk.jmc.flightrecorder.rules.IResult;
 import org.openjdk.jmc.flightrecorder.rules.Severity;
 import org.openjdk.jmc.flightrecorder.ui.FlightRecorderUI;
 import org.openjdk.jmc.flightrecorder.ui.IPageContainer;
-import org.openjdk.jmc.flightrecorder.ui.ItemCollectionToolkit;
-import org.openjdk.jmc.flightrecorder.ui.ItemIterableToolkit;
 import org.openjdk.jmc.flightrecorder.ui.PageManager;
 import org.openjdk.jmc.flightrecorder.ui.common.ItemHistogram.CompositeKeyHistogramBuilder;
 import org.openjdk.jmc.flightrecorder.ui.common.ItemList.ItemListBuilder;
@@ -155,6 +154,7 @@ import org.openjdk.jmc.ui.column.TableSettings.ColumnSettings;
 import org.openjdk.jmc.ui.handlers.ActionToolkit;
 import org.openjdk.jmc.ui.handlers.MCContextMenuManager;
 import org.openjdk.jmc.ui.misc.ChartCanvas;
+import org.openjdk.jmc.ui.misc.ChartTextCanvas;
 import org.openjdk.jmc.ui.misc.CompositeToolkit;
 import org.openjdk.jmc.ui.misc.DisplayToolkit;
 import org.openjdk.jmc.ui.misc.FilterEditor;
@@ -312,6 +312,10 @@ public class DataPageToolkit {
 		setChart(canvas, chart, selectionListener, null);
 	}
 
+	public static void setChart(ChartTextCanvas canvas, XYChart chart, Consumer<IItemCollection> selectionListener) {
+		setChart(canvas, chart, selectionListener, null);
+	}
+
 	public static void setChart(
 		ChartCanvas canvas, XYChart chart, Consumer<IItemCollection> selectionListener,
 		Consumer<IRange<IQuantity>> selectRangeConsumer) {
@@ -328,6 +332,37 @@ public class DataPageToolkit {
 					chart.setVisibleRange(selectionStart, selectionEnd);
 				}
 				canvas.redrawChart();
+			}
+		});
+
+		canvas.setSelectionListener(() -> {
+			selectionListener.accept(ItemRow.getRangeSelection(chart, JfrAttributes.LIFETIME));
+			IQuantity start = chart.getSelectionStart();
+			IQuantity end = chart.getSelectionEnd();
+			if (selectRangeConsumer != null) {
+				selectRangeConsumer
+						.accept(start != null && end != null ? QuantityRange.createWithEnd(start, end) : null);
+			}
+		});
+		canvas.setChart(chart);
+	}
+
+	public static void setChart(
+		ChartTextCanvas canvas, XYChart chart, Consumer<IItemCollection> selectionListener,
+		Consumer<IRange<IQuantity>> selectRangeConsumer) {
+		IMenuManager contextMenu = canvas.getContextMenu();
+		contextMenu.removeAll();
+		canvas.getContextMenu().add(new Action(Messages.CHART_ZOOM_TO_SELECTED_RANGE) {
+			@Override
+			public void run() {
+				IQuantity selectionStart = chart.getSelectionStart();
+				IQuantity selectionEnd = chart.getSelectionEnd();
+				if (selectionStart == null || selectionEnd == null) {
+					chart.clearVisibleRange();
+				} else {
+					chart.setVisibleRange(selectionStart, selectionEnd);
+				}
+				canvas.redrawChartText();
 			}
 		});
 
@@ -717,7 +752,7 @@ public class DataPageToolkit {
 		private String[] topics;
 		private final IPageContainer pageContainer;
 		private volatile Severity maxSeverity;
-		private final List<Consumer<Result>> listeners = new ArrayList<>();
+		private final List<Consumer<IResult>> listeners = new ArrayList<>();
 
 		ShowResultAction(String title, int style, ImageDescriptor icon, Supplier<String> tooltip,
 				IPageContainer pageContainer, String ... topics) {
@@ -728,8 +763,8 @@ public class DataPageToolkit {
 			this.pageContainer = pageContainer;
 			maxSeverity = pageContainer.getRuleManager().getMaxSeverity(topics);
 			for (String topic : topics) {
-				Consumer<Result> listener = result -> {
-					Severity severity = Severity.get(result.getScore());
+				Consumer<IResult> listener = result -> {
+					Severity severity = result.getSeverity();
 					if (severity.compareTo(maxSeverity) > 0) {
 						maxSeverity = severity;
 						setImageDescriptor(getResultIcon(maxSeverity));
@@ -883,8 +918,7 @@ public class DataPageToolkit {
 	// FIXME: Move to some AttributeToolkit?
 	@SuppressWarnings("deprecation")
 	private static Stream<IAttribute<?>> getAttributes(IItemCollection items) {
-		return ItemCollectionToolkit.stream(items).filter(IItemIterable::hasItems)
-				.flatMap(is -> is.getType().getAttributes().stream());
+		return items.stream().filter(IItemIterable::hasItems).flatMap(is -> is.getType().getAttributes().stream());
 	}
 
 	public static Stream<IAttribute<?>> getPersistableAttributes(Stream<IAttribute<?>> attributes) {
@@ -928,8 +962,8 @@ public class DataPageToolkit {
 	 */
 	@SuppressWarnings("unchecked")
 	private static <V> V findValueForFilter(IItemCollection items, ICanonicalAccessorFactory<V> attribute) {
-		IItem firstItem = ItemCollectionToolkit.stream(items).filter(is -> is.getType().hasAttribute(attribute))
-				.flatMap(ItemIterableToolkit::stream)
+		IItem firstItem = items.stream().filter(is -> is.getType().hasAttribute(attribute))
+				.flatMap(iterable -> iterable.stream())
 				.filter(i -> ((IMemberAccessor<V, IItem>) attribute.getAccessor(i.getType())).getMember(i) != null)
 				.findFirst().orElse(null);
 		if (firstItem != null) {

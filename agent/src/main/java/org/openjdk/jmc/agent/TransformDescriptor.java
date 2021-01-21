@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * 
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -44,6 +44,7 @@ public abstract class TransformDescriptor {
 	public static final String ATTRIBUTE_CLASS_PREFIX = "classprefix"; //$NON-NLS-1$
 	public static final String ATTRIBUTE_ALLOW_TO_STRING = "allowtostring"; //$NON-NLS-1$
 	public static final String ATTRIBUTE_ALLOW_CONVERTER = "allowconverter"; //$NON-NLS-1$
+	public static final String ATTRIBUTE_EMIT_ON_EXCEPTION = "emitonexception"; //$NON-NLS-1$
 
 	public static final String DEFAULT_CLASS_PREFIX = "__JFREvent"; //$NON-NLS-1$
 
@@ -105,7 +106,8 @@ public abstract class TransformDescriptor {
 	 * @return the instantiated {@link TransformDescriptor}.
 	 */
 	public static TransformDescriptor create(
-		String id, String internalName, Method method, Map<String, String> values, List<Parameter> parameters, ReturnValue returnValue, List<Field> fields) {
+		String id, String internalName, Method method, Map<String, String> values, List<Parameter> parameters,
+		ReturnValue returnValue, List<Field> fields) {
 		return new JFRTransformDescriptor(id, internalName, method, values, parameters, returnValue, fields);
 	}
 

@@ -43,6 +43,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 
 import org.objectweb.asm.Type;
+import org.openjdk.jmc.agent.Convertable;
 import org.openjdk.jmc.agent.Field;
 import org.openjdk.jmc.agent.Method;
 import org.openjdk.jmc.agent.Parameter;
@@ -51,30 +52,33 @@ import org.openjdk.jmc.agent.TransformDescriptor;
 import org.openjdk.jmc.agent.util.TypeUtils;
 
 public class JFRTransformDescriptor extends TransformDescriptor {
-	private final static String ATTRIBUTE_EVENT_NAME = "name"; //$NON-NLS-1$
-	private final static String ATTRIBUTE_JFR_EVENT_DESCRIPTION = "description"; //$NON-NLS-1$
-	private final static String ATTRIBUTE_JFR_EVENT_PATH = "path"; //$NON-NLS-1$
-	private final static String ATTRIBUTE_STACK_TRACE = "stacktrace"; //$NON-NLS-1$
-	private final static String ATTRIBUTE_RETHROW = "rethrow"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_EVENT_LABEL = "label"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_JFR_EVENT_DESCRIPTION = "description"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_JFR_EVENT_PATH = "path"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_STACK_TRACE = "stacktrace"; //$NON-NLS-1$
+	private static final String ATTRIBUTE_RETHROW = "rethrow"; //$NON-NLS-1$
 
 	private final String classPrefix;
 	private final String eventDescription;
 	private final String eventClassName;
-	private final String eventName;
+	private final String eventLabel;
 	private final String eventPath;
 	private final boolean recordStackTrace;
 	private final boolean useRethrow;
 	private final boolean allowToString;
 	private final boolean allowConverter;
+	private final boolean emitOnException;
+	private boolean matchFound;
 	private final List<Parameter> parameters;
 	private final ReturnValue returnValue;
 	private final List<Field> fields;
 
 	public JFRTransformDescriptor(String id, String className, Method method,
-			Map<String, String> transformationAttributes, List<Parameter> parameters, ReturnValue returnValue, List<Field> fields) {
+			Map<String, String> transformationAttributes, List<Parameter> parameters, ReturnValue returnValue,
+			List<Field> fields) {
 		super(id, className, method, transformationAttributes);
 		classPrefix = initializeClassPrefix();
-		eventName = initializeEventName();
+		eventLabel = initializeEventLabel();
 		eventClassName = initializeEventClassName();
 		eventPath = initializeEventPath();
 		eventDescription = initializeEventDescription();
@@ -82,6 +86,7 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 		useRethrow = getBoolean(ATTRIBUTE_RETHROW, false);
 		allowToString = getBoolean(ATTRIBUTE_ALLOW_TO_STRING, false);
 		allowConverter = getBoolean(ATTRIBUTE_ALLOW_CONVERTER, false);
+		emitOnException = getBoolean(ATTRIBUTE_EMIT_ON_EXCEPTION, false);
 		this.parameters = parameters;
 		this.fields = fields;
 		this.returnValue = returnValue;
@@ -102,24 +107,25 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 
 		Map<String, String> attr = new HashMap<>();
 		TabularData td = (TabularData) cd.get("transformationAttributes");
-		Object[]  values =  td.values().toArray();
-		for (int i = 0; i < values.length; i++){
+		Object[] values = td.values().toArray();
+		for (int i = 0; i < values.length; i++) {
 			CompositeData cdValue = (CompositeData) values[i];
 			String value = (String) cdValue.get("value");
 			String key = (String) cdValue.get("key");
 			attr.put(key, value);
 		}
 
-		return new JFRTransformDescriptor((String) cd.get("id"), (String) cd.get("className"), Method.from((CompositeData) cd.get("method")),
-				attr, params, ReturnValue.from((CompositeData) cd.get("returnValue")), fields);
+		return new JFRTransformDescriptor((String) cd.get("id"), (String) cd.get("className"),
+				Method.from((CompositeData) cd.get("method")), attr, params,
+				ReturnValue.from((CompositeData) cd.get("returnValue")), fields);
 	}
 
 	public String getEventClassName() {
 		return eventClassName;
 	}
 
-	public String getEventName() {
-		return eventName;
+	public String getEventLabel() {
+		return eventLabel;
 	}
 
 	public String getClassPrefix() {
@@ -145,9 +151,13 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 	public boolean isAllowToString() {
 		return allowToString;
 	}
-	
+
 	public boolean isAllowConverter() {
 		return allowConverter;
+	}
+
+	public boolean isEmitOnException() {
+		return emitOnException;
 	}
 
 	private String initializeClassPrefix() {
@@ -158,14 +168,14 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 		return DEFAULT_CLASS_PREFIX;
 	}
 
-	private String initializeEventName() {
-		String eventName = getTransformationAttribute(ATTRIBUTE_EVENT_NAME);
-		if (eventName == null || eventName.length() == 0) {
-			eventName = getMethod().getName();
+	private String initializeEventLabel() {
+		String eventLabel = getTransformationAttribute(ATTRIBUTE_EVENT_LABEL);
+		if (eventLabel == null || eventLabel.length() == 0) {
+			eventLabel = getMethod().getName();
 			Logger.getLogger(JFRTransformDescriptor.class.getName()).log(Level.INFO,
-					"Could not find an event name, generated one: " + eventName); //$NON-NLS-1$
+					"Could not find an event name, generated one: " + eventLabel); //$NON-NLS-1$
 		}
-		return eventName;
+		return eventLabel;
 	}
 
 	private String initializeEventDescription() {
@@ -179,7 +189,7 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 
 	private String initializeEventClassName() {
 		return TypeUtils.getPathPart(getClassName()) + getClassPrefix()
-				+ TypeUtils.deriveIdentifierPart(getEventName());
+				+ TypeUtils.deriveIdentifierPart(getEventLabel());
 	}
 
 	private String initializeEventPath() {
@@ -197,7 +207,7 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 		if (strVal == null || strVal.isEmpty()) {
 			Logger.getLogger(JFRTransformDescriptor.class.getName()).log(Level.FINE,
 					"The boolean attribute " + attribute //$NON-NLS-1$
-							+ " was not set for the event " + eventName + ". Assuming " + defaultValue + "."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+							+ " was not set for the event " + eventLabel + ". Assuming " + defaultValue + "."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			return defaultValue;
 		}
 		return Boolean.parseBoolean(strVal);
@@ -206,7 +216,7 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 	@Override
 	public String toString() {
 		return String.format("JFRTransformDescriptor [method:%s, eventName:%s, #params:%d]", getMethod().toString(), //$NON-NLS-1$
-				eventName, parameters.size());
+				eventLabel, parameters.size());
 	}
 
 	public List<Parameter> getParameters() {
@@ -221,10 +231,23 @@ public class JFRTransformDescriptor extends TransformDescriptor {
 		return returnValue;
 	}
 
-	public boolean isAllowedFieldType(Type type) {
+	public boolean isAllowedEventFieldType(Convertable convertable, Type type) {
 		if (isAllowToString()) {
 			return true;
 		}
-		return type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY;
+		// FIXME: Add better validation, such as checking the class is available
+		if (isAllowConverter() && convertable.hasConverter()) {
+			return true;
+		}
+		return TypeUtils.isSupportedType(type);
 	}
+
+	public void matchFound(boolean matched) {
+		this.matchFound = matched;
+	}
+
+	public boolean isMatchFound() {
+		return matchFound;
+	}
+
 }

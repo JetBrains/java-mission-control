@@ -46,9 +46,9 @@ import org.openjdk.jmc.agent.TransformRegistry;
 import org.openjdk.jmc.agent.jfr.JFRTransformDescriptor;
 
 public class AgentController implements AgentControllerMXBean {
-	
+
 	private static final Logger logger = Logger.getLogger(AgentController.class.getName());
-	
+
 	private final Instrumentation instrumentation;
 	private final TransformRegistry registry;
 
@@ -57,64 +57,67 @@ public class AgentController implements AgentControllerMXBean {
 		this.registry = registry;
 	}
 
-	public void defineEventProbes(String xmlDescription) throws Exception{
+	public void defineEventProbes(String xmlDescription) throws Exception {
 		checkSecurity();
-		HashSet<Class<?>> classesToRetransform = new HashSet<Class<?>>();
+		Class<?>[] classesToRetransformArray;
 		boolean revertAll = xmlDescription == null ? true : xmlDescription.isEmpty();
 		if (revertAll) {
-			List<String> classNames = registry.clearAllTransformData();
-			for (String className : classNames ) {
-				try {
-					Class<?> classToRetransform = Class.forName(className.replace('/', '.'));
-					classesToRetransform.add(classToRetransform);
-				} catch (ClassNotFoundException cnfe) {
-					logger.log(Level.SEVERE, "Unable to find class: " + className, cnfe);
-				}
-			}
+			classesToRetransformArray = retransformClasses(registry.clearAllTransformData());
+			registry.setCurrentConfiguration("");
 		} else {
-			List<TransformDescriptor> descriptors = registry.modify(xmlDescription);
-			boolean noDescriptors = descriptors == null ? true : descriptors.isEmpty();
-			if (noDescriptors) {
+			Set<String> initialClasses = new HashSet<>(registry.getClassNames());
+			Set<String> modifiedClasses = registry.modify(xmlDescription);
+			if (modifiedClasses == null) {
 				logger.log(Level.SEVERE, "Failed to identify transformations: " + xmlDescription);
 				return;
-			}
-			for (TransformDescriptor descriptor : descriptors) {
-				try {
-					Class<?> classToRetransform = Class.forName(descriptor.getClassName().replace('/', '.'));
-					classesToRetransform.add(classToRetransform);
-				} catch (ClassNotFoundException cnfe) {
-					logger.log(Level.SEVERE, "Unable to find class: " + descriptor.getClassName(), cnfe);
-				}
+			} else {
+				modifiedClasses.addAll(initialClasses);
+				classesToRetransformArray = retransformClasses(modifiedClasses);
 			}
 		}
-
-		Class<?>[] classesToRetransformArray = classesToRetransform.toArray(new Class<?>[0]);
-
 		registry.setRevertInstrumentation(true);
 		instrumentation.retransformClasses(classesToRetransformArray);
 		registry.setRevertInstrumentation(false);
 	}
 
+	private Class<?>[] retransformClasses(Set<String> classNames) {
+		Set<Class<?>> classesToRetransform = new HashSet<>();
+		for (String className : classNames) {
+			try {
+				Class<?> classToRetransform = Class.forName(className.replace('/', '.'));
+				classesToRetransform.add(classToRetransform);
+			} catch (ClassNotFoundException cnfe) {
+				logger.log(Level.SEVERE, "Unable to find class: " + className, cnfe);
+			}
+		}
+		return classesToRetransform.toArray(new Class<?>[0]);
+	}
+
 	public JFRTransformDescriptor[] retrieveCurrentTransforms() {
 		checkSecurity();
 		Set<String> classNames = registry.getClassNames();
-		List<TransformDescriptor> tds  = new ArrayList<>();
+		List<TransformDescriptor> tds = new ArrayList<>();
 		for (String className : classNames) {
 			tds.addAll(registry.getTransformData(className));
 		}
 
 		List<JFRTransformDescriptor> jfrTds = new ArrayList<>();
-		for (TransformDescriptor td :tds) {
+		for (TransformDescriptor td : tds) {
 			jfrTds.add((JFRTransformDescriptor) td);
 		}
 		return (jfrTds.toArray(new JFRTransformDescriptor[0]));
 	}
 
+	public String retrieveEventProbes() {
+		checkSecurity();
+		return registry.getCurrentConfiguration();
+	}
+
 	private void checkSecurity() {
-		  SecurityManager secMan = System.getSecurityManager();
-		  if (secMan != null) {
-		    secMan.checkPermission(new ManagementPermission("control"));
-		  }
+		SecurityManager secMan = System.getSecurityManager();
+		if (secMan != null) {
+			secMan.checkPermission(new ManagementPermission("control"));
+		}
 	}
 
 }

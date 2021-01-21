@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
- * 
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The contents of this file are subject to the terms of either the Universal Permissive License
@@ -10,17 +10,17 @@
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted
  * provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this list of conditions
  * and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
  * conditions and the following disclaimer in the documentation and/or other materials provided with
  * the distribution.
- * 
+ *
  * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
  * endorse or promote products derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
  * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
@@ -32,13 +32,16 @@
  */
 package org.openjdk.jmc.agent.impl;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +49,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
@@ -57,12 +61,13 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.openjdk.jmc.agent.Agent;
+import org.openjdk.jmc.agent.Field;
 import org.openjdk.jmc.agent.Method;
 import org.openjdk.jmc.agent.Parameter;
 import org.openjdk.jmc.agent.ReturnValue;
 import org.openjdk.jmc.agent.TransformDescriptor;
 import org.openjdk.jmc.agent.TransformRegistry;
-import org.openjdk.jmc.agent.Field;
 import org.openjdk.jmc.agent.jfr.JFRTransformDescriptor;
 import org.openjdk.jmc.agent.util.IOToolkit;
 import org.openjdk.jmc.agent.util.TypeUtils;
@@ -78,7 +83,7 @@ public class DefaultTransformRegistry implements TransformRegistry {
 
 	// Global override section
 	private static final String XML_ELEMENT_CONFIGURATION = "config"; //$NON-NLS-1$
-	
+
 	// Logging
 	private static final Logger logger = Logger.getLogger("DefaultTransformRegistry");
 
@@ -87,6 +92,8 @@ public class DefaultTransformRegistry implements TransformRegistry {
 	private final HashMap<String, List<TransformDescriptor>> transformData = new HashMap<>();
 
 	private volatile boolean revertInstrumentation = false;
+
+	private String currentConfiguration = "";
 
 	private static final String PROBE_SCHEMA_XSD = "jfrprobes_schema.xsd"; //$NON-NLS-1$
 	private static final Schema PROBE_SCHEMA;
@@ -149,8 +156,8 @@ public class DefaultTransformRegistry implements TransformRegistry {
 				QName element = streamReader.getName();
 				if (XML_ELEMENT_NAME_EVENT.equals(element.getLocalPart())) {
 					TransformDescriptor td = parseTransformData(streamReader, globalDefaults);
-					if (validate(registry,td)) {
-						add(registry, td);
+					if (validate(registry, td)) {
+						registry.add(td);
 					}
 					continue;
 				} else if (XML_ELEMENT_CONFIGURATION.equals(element.getLocalPart())) {
@@ -161,36 +168,42 @@ public class DefaultTransformRegistry implements TransformRegistry {
 			}
 			streamReader.next();
 		}
+		try {
+			configuration.reset();
+		} catch (IOException e) {
+			throw new XMLStreamException(e);
+		}
+		registry.setCurrentConfiguration(getXmlAsString(configuration));
 		return registry;
 	}
 
-	private static void add(DefaultTransformRegistry registry, TransformDescriptor td) {
-		List<TransformDescriptor> transformDataList = registry.getTransformData(td.getClassName());
+	private void add(TransformDescriptor td) {
+		List<TransformDescriptor> transformDataList = transformData.get(td.getClassName());
 		if (transformDataList == null) {
 			transformDataList = new ArrayList<>();
-			registry.transformData.put(td.getClassName(), transformDataList);
+			transformData.put(td.getClassName(), transformDataList);
 		}
 		transformDataList.add(td);
 	}
 
 	private static boolean validate(DefaultTransformRegistry registry, TransformDescriptor td) {
 		if (td.getClassName() == null) {
-			System.err.println("Encountered probe without associated class! Check probe definitions!"); //$NON-NLS-1$
+			Agent.getLogger().warning("Encountered probe without associated class! Check probe definitions!"); //$NON-NLS-1$
 			return false;
 		}
 		if (td.getId() == null) {
-			System.err.println("Encountered probe without associated id! Check probe definitions!"); //$NON-NLS-1$
+			Agent.getLogger().warning("Encountered probe without associated id! Check probe definitions!"); //$NON-NLS-1$
 			return false;
 		}
 
 		List<TransformDescriptor> transformDataList = registry.getTransformData(td.getClassName());
 		if (transformDataList != null) {
-			String tdEventClassName = ((JFRTransformDescriptor)td).getEventClassName();
+			String tdEventClassName = ((JFRTransformDescriptor) td).getEventClassName();
 			for (TransformDescriptor tdListEntry : transformDataList) {
 				String existingName = ((JFRTransformDescriptor) tdListEntry).getEventClassName();
 				if (existingName.equals(tdEventClassName)) {
-					System.err.println("Encountered probe with an event class name that already exists. "
-							+ "Check probe definitions!"); //$NON-NLS-1$
+					Agent.getLogger().warning("Encountered probe with an event class name that already exists: "
+							+ tdEventClassName + "Check probe definitions!"); //$NON-NLS-1$
 					return false;
 				}
 			}
@@ -236,7 +249,8 @@ public class DefaultTransformRegistry implements TransformRegistry {
 			streamReader.next();
 		}
 		transfer(globalDefaults, values);
-		return TransformDescriptor.create(id, TypeUtils.getInternalName(values.get("class")), method, values, parameters, returnValue[0], fields); //$NON-NLS-1$
+		return TransformDescriptor.create(id, TypeUtils.getInternalName(values.get("class")), method, values, //$NON-NLS-1$
+				parameters, returnValue[0], fields);
 	}
 
 	private static void transfer(HashMap<String, String> globalDefaults, Map<String, String> values) {
@@ -277,6 +291,7 @@ public class DefaultTransformRegistry implements TransformRegistry {
 		globalDefaults.put(TransformDescriptor.ATTRIBUTE_ALLOW_TO_STRING, "false"); //$NON-NLS-1$
 		// For safety reasons, allowing converters is opt-in
 		globalDefaults.put(TransformDescriptor.ATTRIBUTE_ALLOW_CONVERTER, "false"); //$NON-NLS-1$
+		globalDefaults.put(TransformDescriptor.ATTRIBUTE_EMIT_ON_EXCEPTION, "false"); //$NON-NLS-1$
 	}
 
 	private static Parameter parseParameter(int index, XMLStreamReader streamReader) throws XMLStreamException {
@@ -399,8 +414,8 @@ public class DefaultTransformRegistry implements TransformRegistry {
 		return new ReturnValue(name, description, contentType, relationKey, converterClassName);
 	}
 
-	private static Method parseMethod(XMLStreamReader streamReader, List<Parameter> parameters, ReturnValue[] returnValue)
-			throws XMLStreamException {
+	private static Method parseMethod(
+		XMLStreamReader streamReader, List<Parameter> parameters, ReturnValue[] returnValue) throws XMLStreamException {
 		streamReader.next();
 		String name = null;
 		String descriptor = null;
@@ -439,7 +454,8 @@ public class DefaultTransformRegistry implements TransformRegistry {
 
 	@Override
 	public List<TransformDescriptor> getTransformData(String className) {
-		return transformData.get(className);
+		List<TransformDescriptor> data = transformData.get(className);
+		return data != null ? data : Collections.emptyList();
 	}
 
 	private boolean isPendingTransforms(List<TransformDescriptor> transforms) {
@@ -467,29 +483,27 @@ public class DefaultTransformRegistry implements TransformRegistry {
 		return builder.toString();
 	}
 
-	public List<TransformDescriptor> modify(String xmlDescription) {
-		try  {
+	@Override
+	public Set<String> modify(String xmlDescription) {
+		try {
 			validateProbeDefinition(xmlDescription);
 
-			List<TransformDescriptor> tds = new ArrayList<TransformDescriptor>();
 			StringReader reader = new StringReader(xmlDescription);
 			XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 			XMLStreamReader streamReader = inputFactory.createXMLStreamReader(reader);
 			HashMap<String, String> globalDefaults = new HashMap<String, String>();
-			List<String> removedOldClasses = new ArrayList<String>();
+			Set<String> modifiedClasses = new HashSet<>();
 			logger.info(xmlDescription);
 			while (streamReader.hasNext()) {
 				if (streamReader.isStartElement()) {
 					QName element = streamReader.getName();
 					if (XML_ELEMENT_NAME_EVENT.equals(element.getLocalPart())) {
 						TransformDescriptor td = parseTransformData(streamReader, globalDefaults);
-						if(!removedOldClasses.contains(td.getClassName())) {
+						if (modifiedClasses.add(td.getClassName())) {
 							transformData.remove(td.getClassName());
-							removedOldClasses.add(td.getClassName());
 						}
-						if (validate(this,td)) {
-							add(this, td);
-							tds.add(td);
+						if (validate(this, td)) {
+							add(td);
 						}
 						continue;
 					} else if (XML_ELEMENT_CONFIGURATION.equals(element.getLocalPart())) {
@@ -498,27 +512,56 @@ public class DefaultTransformRegistry implements TransformRegistry {
 				}
 				streamReader.next();
 			}
-			return tds;
+			currentConfiguration = xmlDescription;
+			clearAllOtherTransformData(modifiedClasses);
+			return modifiedClasses;
 		} catch (XMLStreamException xse) {
 			logger.log(Level.SEVERE, "Failed to create XML Stream Reader", xse);
 			return null;
 		}
 	}
 
-	public List<String> clearAllTransformData() {
-		List<String> classNames = new ArrayList<>(transformData.keySet());
+	private void clearAllOtherTransformData(Set<String> classesToKeep) {
+		Set<String> classNames = new HashSet<>(getClassNames());
+		for (String className : classNames) {
+			if (!classesToKeep.contains(className)) {
+				transformData.remove(className);
+			}
+		}
+	}
+
+	@Override
+	public Set<String> clearAllTransformData() {
+		Set<String> classNames = new HashSet<>(getClassNames());
 		transformData.clear();
 		return classNames;
 	}
 
+	private static String getXmlAsString(InputStream in) {
+		return new BufferedReader(new InputStreamReader(in)).lines().collect(Collectors.joining("\n"));
+	}
+
+	@Override
 	public Set<String> getClassNames() {
 		return Collections.unmodifiableSet(transformData.keySet());
 	}
 
+	@Override
+	public String getCurrentConfiguration() {
+		return currentConfiguration;
+	}
+
+	@Override
+	public void setCurrentConfiguration(String configuration) {
+		currentConfiguration = configuration;
+	}
+
+	@Override
 	public void setRevertInstrumentation(boolean shouldRevert) {
 		this.revertInstrumentation = shouldRevert;
 	}
 
+	@Override
 	public boolean isRevertIntrumentation() {
 		return revertInstrumentation;
 	}

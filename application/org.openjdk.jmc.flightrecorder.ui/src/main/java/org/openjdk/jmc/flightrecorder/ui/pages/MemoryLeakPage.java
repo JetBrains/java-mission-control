@@ -67,6 +67,7 @@ import org.openjdk.jmc.common.IWritableState;
 import org.openjdk.jmc.common.item.Aggregators;
 import org.openjdk.jmc.common.item.IItemCollection;
 import org.openjdk.jmc.common.item.IItemFilter;
+import org.openjdk.jmc.common.item.ItemCollectionToolkit;
 import org.openjdk.jmc.common.item.ItemFilters;
 import org.openjdk.jmc.common.unit.IQuantity;
 import org.openjdk.jmc.common.unit.IRange;
@@ -83,7 +84,6 @@ import org.openjdk.jmc.flightrecorder.ui.IDisplayablePage;
 import org.openjdk.jmc.flightrecorder.ui.IPageContainer;
 import org.openjdk.jmc.flightrecorder.ui.IPageDefinition;
 import org.openjdk.jmc.flightrecorder.ui.IPageUI;
-import org.openjdk.jmc.flightrecorder.ui.ItemCollectionToolkit;
 import org.openjdk.jmc.flightrecorder.ui.StreamModel;
 import org.openjdk.jmc.flightrecorder.ui.common.AbstractDataPage;
 import org.openjdk.jmc.flightrecorder.ui.common.DataPageToolkit;
@@ -124,7 +124,7 @@ public class MemoryLeakPage extends AbstractDataPage {
 
 		@Override
 		public String[] getTopics(IState state) {
-			return new String[] {JfrRuleTopics.MEMORY_LEAK_TOPIC};
+			return new String[] {JfrRuleTopics.MEMORY_LEAK};
 		}
 
 		@Override
