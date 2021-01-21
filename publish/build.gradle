@@ -36,6 +36,20 @@ task extractFlightrecorderSources(type: Copy) {
     into new File("$tmpDir/flightrecorder/sources")
 }
 
+task extractWriterClasses(type: Copy) {
+    from zipTree("$originalDir/flightrecorder.writer-$originalVersion" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/flightrecorder.writer/classes")
+}
+
+task extractWriterSources(type: Copy) {
+    from zipTree("$originalDir/flightrecorder.writer-$originalVersion-sources" + '.jar').matching {
+        exclude 'META-INF/**'
+    }
+    into new File("$tmpDir/flightrecorder.writer/sources")
+}
+
 task commonClassesJar(type: Jar) {
     from extractCommonClasses
     baseName 'jmc-common'
@@ -58,6 +72,19 @@ task flightrecorderClassesJar(type: Jar) {
 task flightrecorderSourcesJar(type: Jar) {
     from extractFlightrecorderSources
     baseName 'jmc-flightrecorder'
+    classifier = 'sources'
+    version mvnVersion
+}
+
+task writerClassesJar(type: Jar) {
+    from extractWriterClasses
+    baseName 'jmc-flightrecorder-writer'
+    version mvnVersion
+}
+
+task writerSourcesJar(type: Jar) {
+    from extractWriterSources
+    baseName 'jmc-flightrecorder-writer'
     classifier = 'sources'
     version mvnVersion
 }
@@ -93,6 +120,13 @@ subprojects { subproject ->
                     dependencyNode.appendNode('version', mvnVersion)
                     dependencyNode.appendNode('scope', 'compile')
                 }
+            }
+            writerPublication(MavenPublication) {
+                artifact writerClassesJar
+                artifact writerSourcesJar
+                groupId mvnGroupId
+                artifactId 'jmc-flightrecorder-writer'
+                version mvnVersion
             }
         }
     }
