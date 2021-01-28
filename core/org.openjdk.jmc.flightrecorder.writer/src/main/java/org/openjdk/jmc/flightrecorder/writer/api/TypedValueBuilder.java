@@ -33,6 +33,7 @@
  */
 package org.openjdk.jmc.flightrecorder.writer.api;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -298,6 +299,9 @@ public interface TypedValueBuilder {
 	TypedValueBuilder putFields(
 		String name, Consumer<TypedValueBuilder> callback1, Consumer<TypedValueBuilder> callback2,
 		Consumer<TypedValueBuilder> ... otherCallbacks);
+
+	TypedValueBuilder putFields(
+			String name, List<Consumer<TypedValueBuilder>> callbacks);
 
 	Map<String, ? extends TypedFieldValue> build();
 }

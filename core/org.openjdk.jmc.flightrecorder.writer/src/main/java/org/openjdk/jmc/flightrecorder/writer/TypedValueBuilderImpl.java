@@ -307,6 +307,13 @@ public final class TypedValueBuilderImpl implements TypedValueBuilder {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
+	public TypedValueBuilder putFields(String name, List<Consumer<TypedValueBuilder>> callbacks) {
+		buildArrayField(name, () -> callbacks.toArray(new Consumer[0]));
+		return this;
+	}
+
+	@Override
 	public Map<String, TypedFieldValueImpl> build() {
 		return Collections.unmodifiableMap(fieldValueMap);
 	}
