@@ -110,7 +110,8 @@ public final class TypesImpl extends Types {
 		});
 		getOrAdd(JDK.THREAD, typeBuilder -> {
 			typeBuilder.addField("osName", getType(Builtin.STRING)).addField("osThreadId", getType(Builtin.LONG))
-					.addField("javaName", getType(Builtin.STRING)).addField("group", threadGroupType);
+					.addField("javaName", getType(Builtin.STRING)).addField("javaThreadId", getType(LONG))
+					.addField("group", threadGroupType);
 		});
 		TypeImpl symbol = getOrAdd(JDK.SYMBOL, builder -> {
 			builder.addField("string", Builtin.STRING);
