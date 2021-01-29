@@ -34,8 +34,7 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -572,6 +571,7 @@ class ValueReaders {
 
 		private final FastAccessNumberMap<Object> methodConstants;
 		private final FastAccessNumberMap<Object> frameTypeConstants;
+		private final Map<FrameData, StructTypes.JfrFrame> frameMap = new HashMap<>();
 
 		public StackTraceReader(FastAccessNumberMap<Object> methodConstants, FastAccessNumberMap<Object> frameTypeConstants) {
 			this.methodConstants = methodConstants;
@@ -584,16 +584,21 @@ class ValueReaders {
 			int framesCount = in.readInt();
 			IMCFrame[] frames = new IMCFrame[framesCount];
 			for (int i = 0; i < framesCount; i++) {
-				StructTypes.JfrFrame frame = new StructTypes.JfrFrame();
 				long methodIndex = in.readLong();
-				Object method = methodConstants.get(methodIndex);
-				frame.method = (method != null) ? method : new ConstantReference(methodIndex);
-				frame.lineNumber = in.readInt();
-				frame.bytecodeIndex = in.readInt();
+				int lineNumber = in.readInt();
+				int bytecodeIndex = in.readInt();
 				long frameTypeIndex = in.readLong();
-				Object frameType = frameTypeConstants.get(frameTypeIndex);
-				frame.type = (frameType != null) ? frameType : new ConstantReference(frameTypeIndex);
-				frames[i] = frame;
+				frames[i] = frameMap.computeIfAbsent(
+						new FrameData(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex),
+						data -> {
+							StructTypes.JfrFrame frame = new StructTypes.JfrFrame();
+							frame.method = getFromPool(data.methodIndex, methodConstants);
+							frame.lineNumber = data.lineNumber;
+							frame.bytecodeIndex = data.bytecodeIndex;
+							frame.type = getFromPool(data.frameTypeIndex, frameTypeConstants);
+							return frame;
+						}
+				);
 			}
 			return new StructTypes.JfrStackTrace(frames, truncated);
 		}
@@ -628,6 +633,38 @@ class ValueReaders {
 		@Override
 		public ContentType<?> getContentType() {
 			return UnitLookup.STACKTRACE;
+		}
+
+		private static Object getFromPool(long index, FastAccessNumberMap<Object> pool) {
+			Object value = pool.get(index);
+			return (value != null) ? value : new ConstantReference(index);
+		}
+
+		private static class FrameData {
+			private final long methodIndex;
+			private final int lineNumber;
+			private final int bytecodeIndex;
+			private final long frameTypeIndex;
+
+			public FrameData(long methodIndex, int lineNumber, int bytecodeIndex, long frameTypeIndex) {
+				this.methodIndex = methodIndex;
+				this.lineNumber = lineNumber;
+				this.bytecodeIndex = bytecodeIndex;
+				this.frameTypeIndex = frameTypeIndex;
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				FrameData frameData = (FrameData) o;
+				return methodIndex == frameData.methodIndex && lineNumber == frameData.lineNumber && bytecodeIndex == frameData.bytecodeIndex && frameTypeIndex == frameData.frameTypeIndex;
+			}
+
+			@Override
+			public int hashCode() {
+				return Objects.hash(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex);
+			}
 		}
 	}
 }
