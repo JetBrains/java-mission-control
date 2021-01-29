@@ -696,33 +696,29 @@ class StructTypes {
 
 	static class JfrStackTrace implements IMCStackTrace {
 
-		public Object frames;
-		public Object truncated;
+		public final IMCFrame[] frames;
+		public final Boolean truncated;
+		private final int hashCode;
 
-		@SuppressWarnings("unchecked")
+		public JfrStackTrace(IMCFrame[] frames, Boolean truncated) {
+			this.frames = frames;
+			this.truncated = truncated;
+			this.hashCode = calcMethodHash();
+		}
+
 		@Override
 		public List<? extends IMCFrame> getFrames() {
-			Object l = frames;
-			if (!(l instanceof List)) {
-				l = Arrays.asList((Object[]) l);
-				frames = l;
-			}
-			return (List<? extends IMCFrame>) l;
+			return Arrays.asList(frames);
 		}
 
 		@Override
 		public TruncationState getTruncationState() {
-			return truncated == null ? TruncationState.UNKNOWN : (((Boolean) truncated).booleanValue()
-					? TruncationState.TRUNCATED : TruncationState.NOT_TRUNCATED);
+			return truncated == null ? TruncationState.UNKNOWN : (truncated ? TruncationState.TRUNCATED : TruncationState.NOT_TRUNCATED);
 		}
 
 		@Override
 		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + Objects.hashCode(frames);
-			result = prime * result + Objects.hashCode(truncated);
-			return result;
+			return hashCode;
 		}
 
 		@Override
@@ -731,10 +727,18 @@ class StructTypes {
 				return true;
 			} else if (obj instanceof JfrStackTrace) {
 				JfrStackTrace ost = (JfrStackTrace) obj;
+				//noinspection ArrayEqualsHashCode
 				return Objects.equals(ost.frames, frames) && Objects.equals(ost.truncated, truncated);
 			}
 			return false;
 		}
 
+		private int calcMethodHash() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + Objects.hashCode(frames);
+			result = prime * result + Objects.hashCode(truncated);
+			return result;
+		}
 	}
 }

@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.openjdk.jmc.common.IMCFrame;
 import org.openjdk.jmc.common.collection.FastAccessNumberMap;
 import org.openjdk.jmc.common.item.IMemberAccessor;
 import org.openjdk.jmc.common.unit.ContentType;
@@ -564,6 +565,69 @@ class ValueReaders {
 								+ "'"); //$NON-NLS-1$
 				fields.add(null);
 			}
+		}
+	}
+
+	static class StackTraceReader implements IValueReader {
+
+		private final FastAccessNumberMap<Object> methodConstants;
+		private final FastAccessNumberMap<Object> frameTypeConstants;
+
+		public StackTraceReader(FastAccessNumberMap<Object> methodConstants, FastAccessNumberMap<Object> frameTypeConstants) {
+			this.methodConstants = methodConstants;
+			this.frameTypeConstants = frameTypeConstants;
+		}
+
+		@Override
+		public Object read(IDataInput in, boolean allowUnresolvedReference) throws IOException, InvalidJfrFileException {
+			boolean truncated = in.readBoolean();
+			int framesCount = in.readInt();
+			IMCFrame[] frames = new IMCFrame[framesCount];
+			for (int i = 0; i < framesCount; i++) {
+				StructTypes.JfrFrame frame = new StructTypes.JfrFrame();
+				long methodIndex = in.readLong();
+				Object method = methodConstants.get(methodIndex);
+				frame.method = (method != null) ? method : new ConstantReference(methodIndex);
+				frame.lineNumber = in.readInt();
+				frame.bytecodeIndex = in.readInt();
+				long frameTypeIndex = in.readLong();
+				Object frameType = frameTypeConstants.get(frameTypeIndex);
+				frame.type = (frameType != null) ? frameType : new ConstantReference(frameTypeIndex);
+				frames[i] = frame;
+			}
+			return new StructTypes.JfrStackTrace(frames, truncated);
+		}
+
+		@Override
+		public void skip(IDataInput in) throws IOException, InvalidJfrFileException {
+			in.readBoolean();
+			int framesCount = in.readInt();
+			for (int i = 0; i < framesCount; i++) {
+				in.readLong();
+				in.readInt();
+				in.readInt();
+				in.readLong();
+			}
+		}
+
+		@Override
+		public Object resolve(Object value) throws InvalidJfrFileException {
+			StructTypes.JfrStackTrace stackTrace = (StructTypes.JfrStackTrace)value;
+			for (IMCFrame frame : stackTrace.getFrames()) {
+				StructTypes.JfrFrame jfrFrame = (StructTypes.JfrFrame) frame;
+				if (jfrFrame.method instanceof ConstantReference) {
+					jfrFrame.method = methodConstants.get(((ConstantReference)jfrFrame.method).key);
+				}
+				if (jfrFrame.type instanceof ConstantReference) {
+					jfrFrame.type = frameTypeConstants.get(((ConstantReference)jfrFrame.type).key);
+				}
+			}
+			return value;
+		}
+
+		@Override
+		public ContentType<?> getContentType() {
+			return UnitLookup.STACKTRACE;
 		}
 	}
 }

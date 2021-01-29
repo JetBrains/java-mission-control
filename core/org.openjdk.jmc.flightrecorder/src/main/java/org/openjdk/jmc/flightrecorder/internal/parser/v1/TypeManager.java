@@ -74,6 +74,7 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.PoolReader
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.PrimitiveReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.QuantityReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.ReflectiveReader;
+import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StackTraceReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StringReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StructReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.TicksTimestampReader;
@@ -161,38 +162,55 @@ class TypeManager {
 
 		public IValueReader getReader() throws InvalidJfrFileException {
 			if (reader == null) {
-				int fieldCount = element.getFieldCount();
-				if (element.isSimpleType() && fieldCount == 1) {
-					FieldElement singleField = element.fields.get(0);
-					if (singleField.classId == element.classId) {
-						throw new InvalidJfrFileException(
-								element.typeIdentifier + " is a simple type referring to itself"); //$NON-NLS-1$
-					} else {
-						reader = createFieldReader(element.fields.get(0), null);
-					}
-				} else if (fieldCount == 0 && element.superType == null) {
-					if (StringReader.STRING.equals(element.typeIdentifier)) {
-						reader = new StringReader(constants);
-					} else {
-						reader = new PrimitiveReader(element.typeIdentifier);
-					}
+				if (STRUCT_TYPE_STACK_TRACE_2.equals(element.typeIdentifier)) {
+					ClassElement stackFrameElement = getSubElementOfType(element, STRUCT_TYPE_STACK_FRAME_2);
+					TypeEntry methodEntry = getTypeEntry(getSubElementOfType(stackFrameElement, STRUCT_TYPE_METHOD_2).classId);
+					TypeEntry frameTypeEntry = getTypeEntry(getSubElementOfType(stackFrameElement, "jdk.types.FrameType").classId);
+					reader = new StackTraceReader(methodEntry.constants, frameTypeEntry.constants);
 				} else {
-					AbstractStructReader typeReader = element.typeIdentifier.startsWith("jdk.") //$NON-NLS-1$
-							? createStructReaderV2(element.typeIdentifier, element.label, element.description,
-									fieldCount)
-							: createStructReaderV1(element.typeIdentifier, element.label, element.description,
-									fieldCount);
-					// assign before resolving field since it may be recursive
-					reader = typeReader;
-					for (int i = 0; i < fieldCount; i++) {
-						FieldElement fe = element.fields.get(i);
-						IValueReader reader = createFieldReader(fe, null);
-						String labelOrId = (fe.label == null) ? fe.fieldIdentifier : fe.label;
-						typeReader.addField(fe.fieldIdentifier, labelOrId, fe.description, reader);
+					int fieldCount = element.getFieldCount();
+					if (element.isSimpleType() && fieldCount == 1) {
+						FieldElement singleField = element.fields.get(0);
+						if (singleField.classId == element.classId) {
+							throw new InvalidJfrFileException(
+									element.typeIdentifier + " is a simple type referring to itself"); //$NON-NLS-1$
+						} else {
+							reader = createFieldReader(element.fields.get(0), null);
+						}
+					} else if (fieldCount == 0 && element.superType == null) {
+						if (StringReader.STRING.equals(element.typeIdentifier)) {
+							reader = new StringReader(constants);
+						} else {
+							reader = new PrimitiveReader(element.typeIdentifier);
+						}
+					} else {
+						AbstractStructReader typeReader = element.typeIdentifier.startsWith("jdk.") //$NON-NLS-1$
+								? createStructReaderV2(element.typeIdentifier, element.label, element.description,
+								fieldCount)
+								: createStructReaderV1(element.typeIdentifier, element.label, element.description,
+								fieldCount);
+						// assign before resolving field since it may be recursive
+						reader = typeReader;
+						for (int i = 0; i < fieldCount; i++) {
+							FieldElement fe = element.fields.get(i);
+							IValueReader reader = createFieldReader(fe, null);
+							String labelOrId = (fe.label == null) ? fe.fieldIdentifier : fe.label;
+							typeReader.addField(fe.fieldIdentifier, labelOrId, fe.description, reader);
+						}
 					}
 				}
 			}
 			return reader;
+		}
+
+		private ClassElement getSubElementOfType(ClassElement element, String typeIdentifier) throws InvalidJfrFileException {
+			for (FieldElement field : element.fields) {
+				TypeEntry typeEntry = getTypeEntry(field.classId);
+				if (typeIdentifier.equals(typeEntry.element.typeIdentifier)) {
+					return typeEntry.element;
+				}
+			}
+			throw new InvalidJfrFileException("Missing field of type " + typeIdentifier);
 		}
 
 		private AbstractStructReader createStructReaderV2(
