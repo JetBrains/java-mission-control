@@ -613,6 +613,11 @@ class StructTypes {
 		}
 
 		@Override
+		public String toString() {
+			return name + " " + descriptor + " " + getType().getFullName();
+		}
+
+		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
@@ -668,6 +673,11 @@ class StructTypes {
 		@Override
 		public Type getType() {
 			return ParserToolkit.parseFrameType(getRawType());
+		}
+
+		@Override
+		public String toString() {
+			return method + " " + type + " " + lineNumber + " " + bytecodeIndex;
 		}
 
 		@Override
