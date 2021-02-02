@@ -128,7 +128,7 @@ public final class TypesImpl extends Types {
 		});
 		TypeImpl classType = getOrAdd(JDK.CLASS, builder -> {
 			builder.addField("classLoader", classLoader).addField("name", symbol).addField("package", packageType)
-					.addField("modifiers", Builtin.INT).addField("hidden", Builtin.BOOLEAN);
+					.addField("modifiers", Builtin.INT);
 		});
 		TypeImpl methodType = getOrAdd(JDK.METHOD, builder -> {
 			builder.addField("type", classType).addField("name", symbol).addField("descriptor", symbol)
