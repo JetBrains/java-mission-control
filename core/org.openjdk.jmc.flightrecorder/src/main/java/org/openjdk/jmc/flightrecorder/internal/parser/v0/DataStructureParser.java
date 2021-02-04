@@ -38,8 +38,7 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.Transition;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ValueDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.util.ParserToolkit;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Class responsible for reading a datastructure, that is an array of {@link ValueDescriptor}s
@@ -51,7 +50,7 @@ final class DataStructureParser {
 		this.relations = relations;
 	}
 
-	public DataStructure[] read(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
+	public DataStructure[] read(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException {
 		int noDataStructures = NumberReaders.readInt(data, offset);
 		DataStructure[] dataStructures = new DataStructure[noDataStructures];
 		for (int i = 0; i < noDataStructures; i++) {
@@ -77,7 +76,7 @@ final class DataStructureParser {
 		return dataStructures;
 	}
 
-	private static Transition readTransition(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
+	private static Transition readTransition(ByteBufferWrapper bytes, Offset offset) throws InvalidJfrFileException {
 		int transitionType = bytes.get(offset.getAndIncrease(1));
 		if (transitionType == 0) {
 			return Transition.None;

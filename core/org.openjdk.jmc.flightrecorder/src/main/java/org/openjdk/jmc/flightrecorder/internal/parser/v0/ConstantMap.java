@@ -32,7 +32,6 @@
  */
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -41,6 +40,7 @@ import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.factories.IPoolFactory;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataType;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * A map of objectId->object where each objectId can map to several values, each associated with a
@@ -120,7 +120,7 @@ class ConstantMap {
 		}
 	}
 
-	void readValue(ByteBuffer data, Offset offset, long timestamp) throws InvalidJfrFileException {
+	void readValue(ByteBufferWrapper data, Offset offset, long timestamp) throws InvalidJfrFileException {
 		long key = NumberReaders.readKey(data, offset, keyType);
 		put(key, valueReader.readValue(data, offset, timestamp), timestamp);
 	}

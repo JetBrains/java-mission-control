@@ -34,8 +34,7 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Represents a pointer into a limited extent within an array of byte data.
@@ -61,7 +60,7 @@ class Offset {
 	 * @throws InvalidJfrFileException
 	 *             if the permitted limit would be after the end of the data array
 	 */
-	Offset(ByteBuffer data, int startOffset) throws InvalidJfrFileException {
+	Offset(ByteBufferWrapper data, int startOffset) throws InvalidJfrFileException {
 		int structSize = DataInputToolkit.readInt(data, startOffset);
 		int structEnd = startOffset + structSize;
 		if (structSize < DataInputToolkit.INTEGER_SIZE || structEnd > data.limit()) {

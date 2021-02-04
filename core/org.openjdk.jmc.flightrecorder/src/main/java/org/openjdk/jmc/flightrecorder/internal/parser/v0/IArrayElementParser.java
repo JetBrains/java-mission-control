@@ -33,8 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * A parser that reads elements of a specific type into an array
@@ -50,7 +49,7 @@ interface IArrayElementParser<T> {
 	 *            the offset to start read from. Will be moved to the end of the parsed data
 	 * @return the parsed element
 	 */
-	T readElement(ByteBuffer data, Offset offset) throws InvalidJfrFileException;
+	T readElement(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException;
 
 	/**
 	 * Creates an array

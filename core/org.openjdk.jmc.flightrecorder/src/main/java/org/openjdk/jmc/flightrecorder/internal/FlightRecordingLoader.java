@@ -37,7 +37,6 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -58,6 +57,7 @@ import org.openjdk.jmc.flightrecorder.internal.parser.LoaderContext;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.ChunkLoaderV0;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ChunkLoaderV1;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 import org.openjdk.jmc.flightrecorder.parser.IParserExtension;
 import org.openjdk.jmc.flightrecorder.parser.ParserExtensionRegistry;
 
@@ -146,7 +146,7 @@ public final class FlightRecordingLoader {
 
 	}
 
-	public static Chunk createChunkInput(ByteBuffer input, int position)
+	public static Chunk createChunkInput(ByteBufferWrapper input, int position)
 			throws CouldNotLoadRecordingException {
 		int i = 0;
 		while (DataInputToolkit.readUnsignedByte(input, position + i) == FLIGHT_RECORDER_MAGIC[i]) {

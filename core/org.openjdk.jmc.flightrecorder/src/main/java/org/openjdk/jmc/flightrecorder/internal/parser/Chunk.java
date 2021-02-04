@@ -34,11 +34,11 @@ package org.openjdk.jmc.flightrecorder.internal.parser;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Class for handling data belonging to a single chunk.
@@ -62,7 +62,7 @@ public class Chunk {
 		this.input = input;
 		this.data = reusableBuffer;
 		position = offset;
-		ByteBuffer buffer = fill(offset + 2 * DataInputToolkit.SHORT_SIZE);
+		ByteBufferWrapper buffer = fill(offset + 2 * DataInputToolkit.SHORT_SIZE);
 		majorVersion = DataInputToolkit.readShort(buffer, offset);
 		minorVersion = DataInputToolkit.readShort(buffer, offset + DataInputToolkit.SHORT_SIZE);
 	}
@@ -95,7 +95,7 @@ public class Chunk {
 	 *            position to fill buffer to
 	 * @return the current buffer for the chunk data
 	 */
-	public ByteBuffer fill(long upToPosition) throws IOException, InvalidJfrFileException {
+	public ByteBufferWrapper fill(long upToPosition) throws IOException, InvalidJfrFileException {
 		int fillUpTo = getArrayPosition(upToPosition);
 		if (data.length < fillUpTo) {
 			data = Arrays.copyOf(data, (int) (fillUpTo * 1.2));
@@ -104,7 +104,7 @@ public class Chunk {
 			input.readFully(data, position, fillUpTo - position);
 			position = fillUpTo;
 		}
-		return ByteBuffer.wrap(data);
+		return ByteBufferWrapper.wrap(data).view(fillUpTo);
 	}
 
 	/**
@@ -142,9 +142,9 @@ public class Chunk {
 	}
 
 	public static class ByteBufferChunk extends Chunk {
-		private final ByteBuffer data;
+		private final ByteBufferWrapper data;
 
-		public ByteBufferChunk(ByteBuffer data, int offset) {
+		public ByteBufferChunk(ByteBufferWrapper data, int offset) {
 			super(null, offset, null,
 					DataInputToolkit.readShort(data, offset),
 					DataInputToolkit.readShort(data, offset + DataInputToolkit.SHORT_SIZE));
@@ -152,12 +152,12 @@ public class Chunk {
 			position = offset + 2 * DataInputToolkit.SHORT_SIZE;
 		}
 
-		public ByteBuffer fill(long upToPosition) throws IOException, InvalidJfrFileException {
+		public ByteBufferWrapper fill(long upToPosition) throws IOException, InvalidJfrFileException {
 			int fillUpTo = getArrayPosition(upToPosition);
 			if (data.limit() < fillUpTo) {
 				throw new InvalidJfrFileException();
 			}
-			return data;
+			return data.view(fillUpTo);
 		}
 
 		public void skip(long upToPosition) throws IOException, InvalidJfrFileException {

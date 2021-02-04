@@ -33,10 +33,10 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Byte array input stream that is not synchronized, not checked and which
@@ -49,10 +49,10 @@ class SeekableInputStream implements IDataInput {
 	private static final byte STRING_ENCODING_CHAR_ARRAY = 4;
 	private static final byte STRING_ENCODING_LATIN1_BYTE_ARRAY = 5;
 
-	private final ByteBuffer buffer;
+	private final ByteBufferWrapper buffer;
 	private int pos;
 
-	public SeekableInputStream(ByteBuffer buffer) {
+	public SeekableInputStream(ByteBufferWrapper buffer) {
 		this.buffer = buffer;
 	}
 
@@ -213,7 +213,7 @@ class SeekableInputStream implements IDataInput {
 
 	private static class CompressedIntsDataInput extends SeekableInputStream {
 
-		public CompressedIntsDataInput(ByteBuffer buffer) {
+		public CompressedIntsDataInput(ByteBufferWrapper buffer) {
 			super(buffer);
 		}
 
@@ -261,7 +261,7 @@ class SeekableInputStream implements IDataInput {
 
 	}
 
-	static SeekableInputStream build(ByteBuffer data, boolean compressedInts) {
+	static SeekableInputStream build(ByteBufferWrapper data, boolean compressedInts) {
 		return compressedInts ? new CompressedIntsDataInput(data) : new SeekableInputStream(data);
 	}
 

@@ -33,7 +33,6 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.openjdk.jmc.flightrecorder.CouldNotLoadRecordingException;
@@ -44,16 +43,17 @@ import org.openjdk.jmc.flightrecorder.internal.parser.Chunk;
 import org.openjdk.jmc.flightrecorder.internal.parser.LoaderContext;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ChunkMetadata.ClassElement;
 import org.openjdk.jmc.flightrecorder.internal.util.ParserToolkit;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 public class ChunkLoaderV1 implements IChunkLoader {
 
 	private final static long CONSTANT_POOL_EVENT_TYPE = 1;
 
 	private final ChunkStructure header;
-	private final ByteBuffer data;
+	private final ByteBufferWrapper data;
 	private final LoaderContext context;
 
-	public ChunkLoaderV1(ChunkStructure header, ByteBuffer data, LoaderContext context) {
+	public ChunkLoaderV1(ChunkStructure header, ByteBufferWrapper data, LoaderContext context) {
 		this.header = header;
 		this.data = data;
 		this.context = context;
@@ -117,7 +117,7 @@ public class ChunkLoaderV1 implements IChunkLoader {
 	public static IChunkLoader create(Chunk input, LoaderContext context)
 			throws IOException, CouldNotLoadRecordingException {
 		ChunkStructure header = new ChunkStructure(input);
-		ByteBuffer data = input.fill(header.getChunkSize());
+		ByteBufferWrapper data = input.fill(header.getChunkSize());
 		return new ChunkLoaderV1(header, data, context);
 	}
 

@@ -35,8 +35,7 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Reads a boolean value from a byte array.
@@ -46,17 +45,17 @@ final class BooleanReader implements IValueReader {
 	public static final BooleanReader INSTANCE = new BooleanReader();
 
 	@Override
-	public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBufferWrapper bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 		return readBoolean(bytes, offset);
 	}
 
-	public static boolean readBoolean(ByteBuffer bytes, Offset offset) throws InvalidJfrFileException {
+	public static boolean readBoolean(ByteBufferWrapper bytes, Offset offset) throws InvalidJfrFileException {
 		int index = offset.get();
 		offset.increase(SIZE);
 		return readBoolean(bytes, index);
 	}
 
-	public static boolean readBoolean(ByteBuffer bytes, int offset) {
+	public static boolean readBoolean(ByteBufferWrapper bytes, int offset) {
 		return bytes.get(offset) != 0;
 	}
 

@@ -39,8 +39,7 @@ import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ProducerDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Values from the metadata descriptor event in a JFR v0 chunk.
@@ -58,7 +57,7 @@ class ChunkMetadata {
 	private static final TypedArrayParser<ProducerDescriptor> PRODUCERS_PARSER = new TypedArrayParser<>(
 			new ProducerParser());
 
-	ChunkMetadata(ByteBuffer data, int metadataOffset) throws InvalidJfrFileException {
+	ChunkMetadata(ByteBufferWrapper data, int metadataOffset) throws InvalidJfrFileException {
 		Offset offset = new Offset(data, metadataOffset);
 		offset.increase(DataInputToolkit.INTEGER_SIZE); // event type
 		producers = PRODUCERS_PARSER.read(data, offset);

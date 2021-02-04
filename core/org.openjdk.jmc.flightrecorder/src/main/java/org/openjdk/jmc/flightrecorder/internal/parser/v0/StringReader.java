@@ -33,11 +33,11 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 
 import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Reads a string
@@ -48,11 +48,11 @@ final class StringReader implements IValueReader {
 	private static final String CHARSET = "UTF-16"; //$NON-NLS-1$
 
 	@Override
-	public Object readValue(ByteBuffer data, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBufferWrapper data, Offset offset, long timestamp) throws InvalidJfrFileException {
 		return readString(data, offset);
 	}
 
-	public static String readString(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
+	public static String readString(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException {
 		int byteCount = readStringByteCount(data, offset);
 		int index = offset.get();
 		offset.increase(byteCount);
@@ -68,7 +68,7 @@ final class StringReader implements IValueReader {
 
 	private static final int UNREASONABLE_STRING_LENGTH = 100000000; // 200 Mibibyte String limit, only intended to avoid OOM
 
-	private static int readStringByteCount(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
+	private static int readStringByteCount(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException {
 		int numberOfStringElements = NumberReaders.readInt(data, offset);
 		if (numberOfStringElements < 0 || numberOfStringElements > UNREASONABLE_STRING_LENGTH) {
 			throw new InvalidJfrFileException();

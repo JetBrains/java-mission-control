@@ -33,11 +33,11 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 import org.openjdk.jmc.flightrecorder.internal.parser.Chunk;
 import org.openjdk.jmc.flightrecorder.internal.util.DataInputToolkit;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Chunk header data for JFR v0 chunks.
@@ -51,7 +51,7 @@ class ChunkStructure {
 	ChunkStructure(Chunk input) throws InvalidJfrFileException, IOException {
 		int position = input.getPosition();
 		bodyStartOffset = position + DataInputToolkit.LONG_SIZE;
-		ByteBuffer buffer = input.fill(bodyStartOffset);
+		ByteBufferWrapper buffer = input.fill(bodyStartOffset);
 		metadataOffset = (int) DataInputToolkit.readLong(buffer, position);
 		buffer = input.fill(metadataOffset + DataInputToolkit.INTEGER_SIZE);
 		int metadataLength = DataInputToolkit.readInt(buffer, metadataOffset);

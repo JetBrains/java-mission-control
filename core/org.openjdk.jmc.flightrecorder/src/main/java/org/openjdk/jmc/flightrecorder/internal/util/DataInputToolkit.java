@@ -32,7 +32,7 @@
  */
 package org.openjdk.jmc.flightrecorder.internal.util;
 
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 public class DataInputToolkit {
 
@@ -103,47 +103,47 @@ public class DataInputToolkit {
 
 	/////////////// For ByteBuffer
 
-	public static int readUnsignedByte(ByteBuffer bytes, int offset) {
+	public static int readUnsignedByte(ByteBufferWrapper bytes, int offset) {
 		return Byte.toUnsignedInt(bytes.get(offset));
 	}
 
-	public static byte readByte(ByteBuffer bytes, int offset) {
+	public static byte readByte(ByteBufferWrapper bytes, int offset) {
 		return bytes.get(offset);
 	}
 
-	public static int readUnsignedShort(ByteBuffer bytes, int offset) {
+	public static int readUnsignedShort(ByteBufferWrapper bytes, int offset) {
 		return Short.toUnsignedInt(bytes.getShort(offset));
 	}
 	
-	public static short readShort(ByteBuffer bytes, int offset) {
+	public static short readShort(ByteBufferWrapper bytes, int offset) {
 		return bytes.getShort(offset);
 	}
 
-	public static char readChar(ByteBuffer bytes, int offset) {
+	public static char readChar(ByteBufferWrapper bytes, int offset) {
 		return (char) readUnsignedShort(bytes, offset);
 	}
 
-	public static long readUnsignedInt(ByteBuffer bytes, int index) {
+	public static long readUnsignedInt(ByteBufferWrapper bytes, int index) {
 		return Integer.toUnsignedLong(bytes.getInt(index));
 	}
 
-	public static int readInt(ByteBuffer bytes, int index) {
+	public static int readInt(ByteBufferWrapper bytes, int index) {
 		return bytes.getInt(index);
 	}
 
-	public static long readLong(ByteBuffer bytes, int index) {
+	public static long readLong(ByteBufferWrapper bytes, int index) {
 		return bytes.getLong(index);
 	}
 
-	public static float readFloat(ByteBuffer bytes, int offset) {
+	public static float readFloat(ByteBufferWrapper bytes, int offset) {
 		return bytes.getFloat(offset);
 	}
 
-	public static double readDouble(ByteBuffer bytes, int offset) {
+	public static double readDouble(ByteBufferWrapper bytes, int offset) {
 		return bytes.getDouble(offset);
 	}
 
-	public static boolean readBoolean(ByteBuffer bytes, int offset) {
+	public static boolean readBoolean(ByteBufferWrapper bytes, int offset) {
 		return bytes.get(offset) != 0;
 	}
 }

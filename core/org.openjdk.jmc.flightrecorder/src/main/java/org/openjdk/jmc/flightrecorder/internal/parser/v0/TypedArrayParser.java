@@ -33,8 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 class TypedArrayParser<T> {
 
@@ -44,7 +43,7 @@ class TypedArrayParser<T> {
 		this.elementParser = elementParser;
 	}
 
-	public T[] read(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
+	public T[] read(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException {
 		int arraySize = NumberReaders.readInt(data, offset);
 		T[] array = elementParser.createArray(arraySize);
 		for (int n = 0; n < arraySize; n++) {

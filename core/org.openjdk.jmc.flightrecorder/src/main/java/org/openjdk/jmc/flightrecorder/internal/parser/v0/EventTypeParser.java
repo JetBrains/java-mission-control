@@ -37,8 +37,7 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.DataStructure;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.EventTypeDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.parser.v0.model.ValueDescriptor;
 import org.openjdk.jmc.flightrecorder.internal.util.ParserToolkit;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * Class responsible for reading an {@link EventTypeDescriptor}
@@ -51,7 +50,7 @@ final class EventTypeParser implements IArrayElementParser<EventTypeDescriptor> 
 	}
 
 	@Override
-	public EventTypeDescriptor readElement(ByteBuffer data, Offset offset) throws InvalidJfrFileException {
+	public EventTypeDescriptor readElement(ByteBufferWrapper data, Offset offset) throws InvalidJfrFileException {
 		int id = NumberReaders.readInt(data, offset);
 		String name = UTFStringParser.readString(data, offset);
 		String description = UTFStringParser.readString(data, offset);

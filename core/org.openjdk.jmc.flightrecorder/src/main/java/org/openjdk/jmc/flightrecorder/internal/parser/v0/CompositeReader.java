@@ -35,8 +35,7 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v0;
 import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.common.unit.UnitLookup;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
-
-import java.nio.ByteBuffer;
+import org.openjdk.jmc.flightrecorder.parser.ByteBufferWrapper;
 
 /**
  * A ValueParser consisting of several ValueParsers.
@@ -50,7 +49,7 @@ final class CompositeReader implements IValueReader {
 	}
 
 	@Override
-	public Object readValue(ByteBuffer bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
+	public Object readValue(ByteBufferWrapper bytes, Offset offset, long timestamp) throws InvalidJfrFileException {
 		Object[] objects = new Object[readers.length];
 		for (int n = 0; n < objects.length; n++) {
 			objects[n] = readers[n].readValue(bytes, offset, timestamp);
