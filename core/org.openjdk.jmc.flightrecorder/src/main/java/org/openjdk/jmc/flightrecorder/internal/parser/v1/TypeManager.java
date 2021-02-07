@@ -162,12 +162,8 @@ class TypeManager {
 
 		public IValueReader getReader() throws InvalidJfrFileException {
 			if (reader == null) {
-				if (STRUCT_TYPE_STACK_TRACE_2.equals(element.typeIdentifier)) {
-					ClassElement stackFrameElement = getSubElementOfType(element, STRUCT_TYPE_STACK_FRAME_2);
-					TypeEntry methodEntry = getTypeEntry(getSubElementOfType(stackFrameElement, STRUCT_TYPE_METHOD_2).classId);
-					TypeEntry frameTypeEntry = getTypeEntry(getSubElementOfType(stackFrameElement, "jdk.types.FrameType").classId);
-					reader = new StackTraceReader(methodEntry.constants, frameTypeEntry.constants);
-				} else {
+				reader = createStackTraceReaderOrNull();
+				if (reader == null) {
 					int fieldCount = element.getFieldCount();
 					if (element.isSimpleType() && fieldCount == 1) {
 						FieldElement singleField = element.fields.get(0);
@@ -201,6 +197,17 @@ class TypeManager {
 				}
 			}
 			return reader;
+		}
+
+		private StackTraceReader createStackTraceReaderOrNull() throws InvalidJfrFileException {
+			boolean isV1 = STRUCT_TYPE_STACK_TRACE.equals(element.typeIdentifier);
+			if (!isV1 && !STRUCT_TYPE_STACK_TRACE_2.equals(element.typeIdentifier)) {
+				return null;
+			}
+			ClassElement stackFrameElement = getSubElementOfType(element, isV1 ? STRUCT_TYPE_STACK_FRAME : STRUCT_TYPE_STACK_FRAME_2);
+			TypeEntry methodEntry = getTypeEntry(getSubElementOfType(stackFrameElement, isV1 ? STRUCT_TYPE_METHOD : STRUCT_TYPE_METHOD_2).classId);
+			TypeEntry frameTypeEntry = getTypeEntry(getSubElementOfType(stackFrameElement, isV1 ? "com.oracle.jfr.types.FrameType" : "jdk.types.FrameType").classId);
+			return new StackTraceReader(methodEntry.constants, frameTypeEntry.constants);
 		}
 
 		private ClassElement getSubElementOfType(ClassElement element, String typeIdentifier) throws InvalidJfrFileException {
