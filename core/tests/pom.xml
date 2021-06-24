@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--   
-   Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2021, Datadog, Inc. All rights reserved.
    
    DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
    
@@ -36,7 +37,7 @@
 	<parent>
 		<groupId>org.openjdk.jmc</groupId>
 		<artifactId>missioncontrol.core</artifactId>
-		<version>8.0.0-SNAPSHOT</version>
+		<version>${revision}${changelist}</version>
 	</parent>
 	<artifactId>missioncontrol.core.tests</artifactId>
 	<packaging>pom</packaging>
@@ -45,6 +46,7 @@
 		<module>org.openjdk.jmc.flightrecorder.test</module>
 		<module>org.openjdk.jmc.flightrecorder.rules.test</module>
 		<module>org.openjdk.jmc.flightrecorder.rules.jdk.test</module>
+		<module>org.openjdk.jmc.flightrecorder.serializers.test</module>
 		<module>org.openjdk.jmc.jdp.test</module>
 	</modules>
 	<properties>
@@ -117,7 +119,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.3</version>
+				<version>0.8.6</version>
 				<executions>
 					<execution>
 						<id>pre-unit-test</id>
