@@ -1,5 +1,4 @@
 plugins {
-    id "com.jfrog.bintray" version "1.8.4"
     id 'maven-publish'
     id 'java'
 }
@@ -89,13 +88,8 @@ task writerSourcesJar(type: Jar) {
     version mvnVersion
 }
 
-afterEvaluate {
-    task patchedBintrayUpload(dependsOn: subprojects.collect { it.bintrayUpload })
-}
 subprojects { subproject ->
-    apply plugin: 'com.jfrog.bintray'
     apply plugin: 'maven-publish'
-    def projName = subproject.name
     publishing {
         publications {
             commonPublication(MavenPublication) {
@@ -129,18 +123,14 @@ subprojects { subproject ->
                 version mvnVersion
             }
         }
-    }
-    bintray {
-        user = System.getenv('BINTRAY_USER')
-        key = System.getenv('BINTRAY_KEY')
-
-        publish = true
-        pkg {
-            repo = bintrayRepo
-            name = "jmc-" + projName
-            userOrg = bintrayUserOrg
-            version.name = mvnVersion
+        repositories {
+            maven {
+                url "https://packages.jetbrains.team/maven/p/ij/intellij-dependencies"
+                credentials {
+                    username = System.getenv('INTELLIJ_DEPENDENCIES_BOT')
+                    password = System.getenv('INTELLIJ_DEPENDENCIES_TOKEN')
+                }
+            }
         }
-        publications = [projName + "Publication"]
     }
 }
