@@ -712,11 +712,11 @@ class StructTypes {
 
 	static class JfrStackTrace implements IMCStackTrace {
 
-		public final IMCFrame[] frames;
-		public final Boolean truncated;
+		public Object frames;
+		public Object truncated;
 		private final int hashCode;
 
-		public JfrStackTrace(IMCFrame[] frames, Boolean truncated) {
+		public JfrStackTrace(Object frames, Object truncated) {
 			this.frames = frames;
 			this.truncated = truncated;
 			this.hashCode = calcMethodHash();
@@ -724,12 +724,17 @@ class StructTypes {
 
 		@Override
 		public List<? extends IMCFrame> getFrames() {
-			return Arrays.asList(frames);
+			Object l = frames;
+			if (!(l instanceof List)) {
+				l = Arrays.asList((Object[]) l);
+				frames = l;
+			}
+			return (List<? extends IMCFrame>) l;
 		}
 
 		@Override
 		public TruncationState getTruncationState() {
-			return truncated == null ? TruncationState.UNKNOWN : (truncated ? TruncationState.TRUNCATED : TruncationState.NOT_TRUNCATED);
+			return truncated == null ? TruncationState.UNKNOWN : ((Boolean) truncated ? TruncationState.TRUNCATED : TruncationState.NOT_TRUNCATED);
 		}
 
 		@Override

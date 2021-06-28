@@ -73,7 +73,6 @@ import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.PoolReader
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.PrimitiveReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.QuantityReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.ReflectiveReader;
-import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StackTraceReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StringReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.StructReader;
 import org.openjdk.jmc.flightrecorder.internal.parser.v1.ValueReaders.TicksTimestampReader;
@@ -163,62 +162,38 @@ class TypeManager {
 
 		public IValueReader getReader() throws InvalidJfrFileException {
 			if (reader == null) {
-				reader = createStackTraceReaderOrNull();
-				if (reader == null) {
-					int fieldCount = element.getFieldCount();
-					if (element.isSimpleType() && fieldCount == 1) {
-						FieldElement singleField = element.fields.get(0);
-						if (singleField.classId == element.classId) {
-							throw new InvalidJfrFileException(
-									element.typeIdentifier + " is a simple type referring to itself"); //$NON-NLS-1$
-						} else {
-							reader = createFieldReader(element.fields.get(0), null);
-						}
-					} else if (fieldCount == 0 && element.superType == null) {
-						if (StringReader.STRING.equals(element.typeIdentifier)) {
-							reader = new StringReader(constants);
-						} else {
-							reader = new PrimitiveReader(element.typeIdentifier);
-						}
+				int fieldCount = element.getFieldCount();
+				if (element.isSimpleType() && fieldCount == 1) {
+					FieldElement singleField = element.fields.get(0);
+					if (singleField.classId == element.classId) {
+						throw new InvalidJfrFileException(
+								element.typeIdentifier + " is a simple type referring to itself"); //$NON-NLS-1$
 					} else {
-						AbstractStructReader typeReader = element.typeIdentifier.startsWith("jdk.") //$NON-NLS-1$
-								? createStructReaderV2(element.typeIdentifier, element.label, element.description,
-								fieldCount)
-								: createStructReaderV1(element.typeIdentifier, element.label, element.description,
-								fieldCount);
-						// assign before resolving field since it may be recursive
-						reader = typeReader;
-						for (int i = 0; i < fieldCount; i++) {
-							FieldElement fe = element.fields.get(i);
-							IValueReader reader = createFieldReader(fe, null);
-							String labelOrId = (fe.label == null) ? fe.fieldIdentifier : fe.label;
-							typeReader.addField(fe.fieldIdentifier, labelOrId, fe.description, reader);
-						}
+						reader = createFieldReader(element.fields.get(0), null);
+					}
+				} else if (fieldCount == 0 && element.superType == null) {
+					if (StringReader.STRING.equals(element.typeIdentifier)) {
+						reader = new StringReader(constants);
+					} else {
+						reader = new PrimitiveReader(element.typeIdentifier);
+					}
+				} else {
+					AbstractStructReader typeReader = element.typeIdentifier.startsWith("jdk.") //$NON-NLS-1$
+							? createStructReaderV2(element.typeIdentifier, element.label, element.description,
+							fieldCount)
+							: createStructReaderV1(element.typeIdentifier, element.label, element.description,
+							fieldCount);
+					// assign before resolving field since it may be recursive
+					reader = typeReader;
+					for (int i = 0; i < fieldCount; i++) {
+						FieldElement fe = element.fields.get(i);
+						IValueReader reader = createFieldReader(fe, null);
+						String labelOrId = (fe.label == null) ? fe.fieldIdentifier : fe.label;
+						typeReader.addField(fe.fieldIdentifier, labelOrId, fe.description, reader);
 					}
 				}
 			}
 			return reader;
-		}
-
-		private StackTraceReader createStackTraceReaderOrNull() throws InvalidJfrFileException {
-			boolean isV1 = STRUCT_TYPE_STACK_TRACE.equals(element.typeIdentifier);
-			if (!isV1 && !STRUCT_TYPE_STACK_TRACE_2.equals(element.typeIdentifier)) {
-				return null;
-			}
-			ClassElement stackFrameElement = getSubElementOfType(element, isV1 ? STRUCT_TYPE_STACK_FRAME : STRUCT_TYPE_STACK_FRAME_2);
-			TypeEntry methodEntry = getTypeEntry(getSubElementOfType(stackFrameElement, isV1 ? STRUCT_TYPE_METHOD : STRUCT_TYPE_METHOD_2).classId);
-			TypeEntry frameTypeEntry = getTypeEntry(getSubElementOfType(stackFrameElement, isV1 ? "com.oracle.jfr.types.FrameType" : "jdk.types.FrameType").classId);
-			return new StackTraceReader(methodEntry.constants, frameTypeEntry.constants);
-		}
-
-		private ClassElement getSubElementOfType(ClassElement element, String typeIdentifier) throws InvalidJfrFileException {
-			for (FieldElement field : element.fields) {
-				TypeEntry typeEntry = getTypeEntry(field.classId);
-				if (typeIdentifier.equals(typeEntry.element.typeIdentifier)) {
-					return typeEntry.element;
-				}
-			}
-			throw new InvalidJfrFileException("Missing field of type " + typeIdentifier);
 		}
 
 		private AbstractStructReader createStructReaderV2(
@@ -241,7 +216,7 @@ class TypeManager {
 			case STRUCT_TYPE_STACK_FRAME_2:
 				return new SpecificReaders.StackFrame2Reader(JfrFrame.class, fieldCount, UnitLookup.STACKTRACE_FRAME);
 			case STRUCT_TYPE_STACK_TRACE_2:
-				return new ReflectiveReader(JfrStackTrace.class, fieldCount, UnitLookup.STACKTRACE);
+				return new SpecificReaders.StackTrace2Reader(JfrStackTrace.class, fieldCount, UnitLookup.STACKTRACE);
 			case STRUCT_TYPE_MODULE_2:
 				return new ReflectiveReader(JfrJavaModule.class, fieldCount, UnitLookup.MODULE);
 			case STRUCT_TYPE_PACKAGE_2:
@@ -289,7 +264,7 @@ class TypeManager {
 			case STRUCT_TYPE_STACK_FRAME:
 				return new ReflectiveReader(JfrFrame.class, fieldCount, UnitLookup.STACKTRACE_FRAME);
 			case STRUCT_TYPE_STACK_TRACE:
-				return new ReflectiveReader(JfrStackTrace.class, fieldCount, UnitLookup.STACKTRACE);
+				return new SpecificReaders.StackTrace2Reader(JfrStackTrace.class, fieldCount, UnitLookup.STACKTRACE);
 			case STRUCT_TYPE_MODULE:
 				return new ReflectiveReader(JfrJavaModule.class, fieldCount, UnitLookup.MODULE);
 			case STRUCT_TYPE_PACKAGE:

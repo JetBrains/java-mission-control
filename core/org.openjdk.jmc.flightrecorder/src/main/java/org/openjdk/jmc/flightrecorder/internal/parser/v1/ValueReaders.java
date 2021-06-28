@@ -38,7 +38,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.openjdk.jmc.common.IMCFrame;
 import org.openjdk.jmc.common.collection.FastAccessNumberMap;
 import org.openjdk.jmc.common.item.IMemberAccessor;
 import org.openjdk.jmc.common.unit.ContentType;
@@ -60,7 +59,7 @@ class ValueReaders {
 		ContentType<?> getContentType();
 	}
 
-	private static class ConstantReference {
+	protected static class ConstantReference {
 		final long key;
 
 		ConstantReference(long key) {
@@ -563,107 +562,6 @@ class ValueReaders {
 						"Could not find field with name '" + identifier + "' in reader for '" + ct.getIdentifier() //$NON-NLS-1$ //$NON-NLS-2$
 								+ "'"); //$NON-NLS-1$
 				fields.add(null);
-			}
-		}
-	}
-
-	static class StackTraceReader implements IValueReader {
-
-		private final FastAccessNumberMap<Object> methodConstants;
-		private final FastAccessNumberMap<Object> frameTypeConstants;
-		private final Map<FrameData, StructTypes.JfrFrame> frameMap = new HashMap<>();
-
-		public StackTraceReader(FastAccessNumberMap<Object> methodConstants, FastAccessNumberMap<Object> frameTypeConstants) {
-			this.methodConstants = methodConstants;
-			this.frameTypeConstants = frameTypeConstants;
-		}
-
-		@Override
-		public Object read(IDataInput in, boolean allowUnresolvedReference) throws IOException, InvalidJfrFileException {
-			boolean truncated = in.readBoolean();
-			int framesCount = in.readInt();
-			IMCFrame[] frames = new IMCFrame[framesCount];
-			for (int i = 0; i < framesCount; i++) {
-				long methodIndex = in.readLong();
-				int lineNumber = in.readInt();
-				int bytecodeIndex = in.readInt();
-				long frameTypeIndex = in.readLong();
-				frames[i] = frameMap.computeIfAbsent(
-						new FrameData(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex),
-						data -> {
-							StructTypes.JfrFrame frame = new StructTypes.JfrFrame();
-							frame.method = getFromPool(data.methodIndex, methodConstants);
-							frame.lineNumber = data.lineNumber;
-							frame.bytecodeIndex = data.bytecodeIndex;
-							frame.type = getFromPool(data.frameTypeIndex, frameTypeConstants);
-							return frame;
-						}
-				);
-			}
-			return new StructTypes.JfrStackTrace(frames, truncated);
-		}
-
-		@Override
-		public void skip(IDataInput in) throws IOException, InvalidJfrFileException {
-			in.readBoolean();
-			int framesCount = in.readInt();
-			for (int i = 0; i < framesCount; i++) {
-				in.readLong();
-				in.readInt();
-				in.readInt();
-				in.readLong();
-			}
-		}
-
-		@Override
-		public Object resolve(Object value) throws InvalidJfrFileException {
-			StructTypes.JfrStackTrace stackTrace = (StructTypes.JfrStackTrace)value;
-			for (IMCFrame frame : stackTrace.getFrames()) {
-				StructTypes.JfrFrame jfrFrame = (StructTypes.JfrFrame) frame;
-				if (jfrFrame.method instanceof ConstantReference) {
-					jfrFrame.method = methodConstants.get(((ConstantReference)jfrFrame.method).key);
-				}
-				if (jfrFrame.type instanceof ConstantReference) {
-					jfrFrame.type = frameTypeConstants.get(((ConstantReference)jfrFrame.type).key);
-				}
-			}
-			return value;
-		}
-
-		@Override
-		public ContentType<?> getContentType() {
-			return UnitLookup.STACKTRACE;
-		}
-
-		private static Object getFromPool(long index, FastAccessNumberMap<Object> pool) {
-			Object value = pool.get(index);
-			return (value != null) ? value : new ConstantReference(index);
-		}
-
-		private static class FrameData {
-			private final long methodIndex;
-			private final int lineNumber;
-			private final int bytecodeIndex;
-			private final long frameTypeIndex;
-
-			public FrameData(long methodIndex, int lineNumber, int bytecodeIndex, long frameTypeIndex) {
-				this.methodIndex = methodIndex;
-				this.lineNumber = lineNumber;
-				this.bytecodeIndex = bytecodeIndex;
-				this.frameTypeIndex = frameTypeIndex;
-			}
-
-			@Override
-			public boolean equals(Object o) {
-				if (this == o) return true;
-				if (o == null || getClass() != o.getClass()) return false;
-				FrameData frameData = (FrameData) o;
-				return methodIndex == frameData.methodIndex && lineNumber == frameData.lineNumber && bytecodeIndex == frameData.bytecodeIndex && frameTypeIndex == frameData.frameTypeIndex;
-			}
-
-			@Override
-			public int hashCode() {
-				return Objects.hash(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex);
 			}
 		}
 	}

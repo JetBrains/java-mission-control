@@ -37,11 +37,56 @@ import org.openjdk.jmc.common.unit.ContentType;
 import org.openjdk.jmc.flightrecorder.internal.InvalidJfrFileException;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 public class SpecificReaders {
 	private static Logger LOG = Logger.getLogger(SpecificReaders.class.getName());
+
+	static class StackTrace2Reader extends ValueReaders.ReflectiveReader {
+		int truncatedIdx;
+		int framesIdx;
+
+		<T> StackTrace2Reader(Class<T> klass, int fieldCount, ContentType<? super T> ct) {
+			super(klass, fieldCount, ct);
+		}
+
+		@Override
+		void addField(String identifier, String name, String description, ValueReaders.IValueReader reader) throws InvalidJfrFileException {
+			super.addField(identifier, name, description, reader);
+			int currentIdx = valueReaders.size() - 1;
+			switch (identifier) {
+				case "frames":
+					framesIdx = currentIdx;
+					break;
+				case "truncated":
+					truncatedIdx = currentIdx;
+					break;
+				default:
+					throw new RuntimeException("unexpected fields for StackTrace2Reader: " + identifier);
+			}
+		}
+
+		@Override
+		public Object read(IDataInput in, boolean allowUnresolvedReference) throws IOException, InvalidJfrFileException {
+			Object truncationState = valueReaders.get(truncatedIdx).read(in, allowUnresolvedReference);
+			Object frames = valueReaders.get(framesIdx).read(in, allowUnresolvedReference);
+			return new StructTypes.JfrStackTrace(frames, truncationState);
+		}
+
+		@Override
+		public Object resolve(Object value) throws InvalidJfrFileException {
+			if (!(value instanceof StructTypes.JfrStackTrace)) {
+				throw new RuntimeException("Invalid object type, expected JfrFrame");
+			}
+			StructTypes.JfrStackTrace stackTrace = ((StructTypes.JfrStackTrace) value);
+			Object truncationState = valueReaders.get(truncatedIdx).resolve(stackTrace.truncated);
+			Object frames = valueReaders.get(framesIdx).resolve(stackTrace.frames);
+			return new StructTypes.JfrStackTrace(frames, truncationState);
+		}
+	}
 
 	static class StackFrame2Reader extends ValueReaders.ReflectiveReader {
 		boolean fallback;
@@ -49,6 +94,9 @@ public class SpecificReaders {
 		int lineNumberIdx;
 		int bytecodeIndexIdx;
 		int typeIdx;
+
+		// TODO gc-friendly? LRU?
+		private final Map<FrameData, StructTypes.JfrFrame> frames = new HashMap<>();
 
 		<T> StackFrame2Reader(Class<T> klass, int fieldCount, ContentType<? super T> ct) {
 			super(klass, fieldCount, ct);
@@ -60,21 +108,21 @@ public class SpecificReaders {
 			super.addField(identifier, name, description, reader);
 			int currentIdx = valueReaders.size() - 1;
 			switch (identifier) {
-			case "method":
-				methodIdx = currentIdx;
-				break;
-			case "lineNumber":
-				lineNumberIdx = currentIdx;
-				break;
-			case "bytecodeIndex":
-				bytecodeIndexIdx = currentIdx;
-				break;
-			case "type":
-				typeIdx = currentIdx;
-				break;
-			default:
-				fallback = true; // invalid expected format, falling back to ReflectiveReader
-				LOG.warning("unexpected fields for StackFrame2Reader: " + identifier);
+				case "method":
+					methodIdx = currentIdx;
+					break;
+				case "lineNumber":
+					lineNumberIdx = currentIdx;
+					break;
+				case "bytecodeIndex":
+					bytecodeIndexIdx = currentIdx;
+					break;
+				case "type":
+					typeIdx = currentIdx;
+					break;
+				default:
+					fallback = true; // invalid expected format, falling back to ReflectiveReader
+					LOG.warning("unexpected fields for StackFrame2Reader: " + identifier);
 			}
 		}
 
@@ -84,6 +132,32 @@ public class SpecificReaders {
 			if (fallback) {
 				return super.read(in, allowUnresolvedReference);
 			}
+
+			if (!(in instanceof SeekableInputStream)) {
+				return readFrameFair(in, allowUnresolvedReference);
+			}
+
+			long initialPosition = in.getPosition();
+
+			long methodConstantIndex = in.readLong();
+			int lineNumber = in.readInt();
+			int bytecodeIndex = in.readInt();
+			long frameTypeConstantIndex = in.readLong();
+
+			return frames.computeIfAbsent(
+					new FrameData(methodConstantIndex, lineNumber, bytecodeIndex, frameTypeConstantIndex),
+					__ -> {
+						try {
+							((SeekableInputStream) in).seek(initialPosition);
+							return readFrameFair(in, allowUnresolvedReference);
+						} catch (InvalidJfrFileException | IOException e) {
+							throw new RuntimeException(e);
+						}
+					});
+		}
+
+		private StructTypes.JfrFrame readFrameFair(IDataInput in, boolean allowUnresolvedReference)
+				throws InvalidJfrFileException, IOException {
 			StructTypes.JfrFrame jfrFrame = new StructTypes.JfrFrame();
 			jfrFrame.method = valueReaders.get(methodIdx).read(in, allowUnresolvedReference);
 			jfrFrame.lineNumber = valueReaders.get(lineNumberIdx).read(in, allowUnresolvedReference);
@@ -102,6 +176,33 @@ public class SpecificReaders {
 			jfrFrame.bytecodeIndex = valueReaders.get(2).resolve(jfrFrame.bytecodeIndex);
 			jfrFrame.type = valueReaders.get(3).resolve(jfrFrame.type);
 			return value;
+		}
+
+		private static class FrameData {
+			private final long methodIndex;
+			private final int lineNumber;
+			private final int bytecodeIndex;
+			private final long frameTypeIndex;
+
+			public FrameData(long methodIndex, int lineNumber, int bytecodeIndex, long frameTypeIndex) {
+				this.methodIndex = methodIndex;
+				this.lineNumber = lineNumber;
+				this.bytecodeIndex = bytecodeIndex;
+				this.frameTypeIndex = frameTypeIndex;
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				FrameData frameData = (FrameData) o;
+				return methodIndex == frameData.methodIndex && lineNumber == frameData.lineNumber && bytecodeIndex == frameData.bytecodeIndex && frameTypeIndex == frameData.frameTypeIndex;
+			}
+
+			@Override
+			public int hashCode() {
+				return Objects.hash(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex);
+			}
 		}
 	}
 }
