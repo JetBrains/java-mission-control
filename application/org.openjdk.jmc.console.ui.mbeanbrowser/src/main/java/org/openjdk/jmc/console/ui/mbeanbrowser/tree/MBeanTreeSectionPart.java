@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * 
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
@@ -58,7 +59,6 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.forms.widgets.FormToolkit;
-
 import org.openjdk.jmc.console.ui.actions.MBeanAutomaticRefreshAction;
 import org.openjdk.jmc.console.ui.mbeanbrowser.MBeanBrowserPlugin;
 import org.openjdk.jmc.console.ui.mbeanbrowser.messages.internal.Messages;
@@ -153,8 +153,8 @@ public class MBeanTreeSectionPart extends MCSectionPart implements IMBeanPropert
 			}
 			MBeanBrowserPlugin.getDefault().getLogger().warning("Couldn't find " + bean + " in MBean tree"); //$NON-NLS-1$ //$NON-NLS-2$
 		} catch (Exception e) {
-			e.printStackTrace();
-			MBeanBrowserPlugin.getDefault().getLogger().warning("Failed to select OperatingSystem bean: " + e); //$NON-NLS-1$
+			MBeanBrowserPlugin.getDefault().getLogger().log(Level.WARNING, "Failed to select OperatingSystem bean: ", //$NON-NLS-1$
+					e);
 		}
 	}
 
