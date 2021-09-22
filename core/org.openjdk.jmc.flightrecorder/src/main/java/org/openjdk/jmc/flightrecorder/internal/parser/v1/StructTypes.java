@@ -619,11 +619,6 @@ class StructTypes {
 		}
 
 		@Override
-		public String toString() {
-			return name + " " + descriptor + " " + getType().getFullName();
-		}
-
-		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
@@ -674,18 +669,13 @@ class StructTypes {
 		}
 
 		@Override
-		public String getRawType() {
-			return (String) type;
-		}
-
-		@Override
 		public Type getType() {
-			return ParserToolkit.parseFrameType(getRawType());
-		}
-
-		@Override
-		public String toString() {
-			return method + " " + type + " " + lineNumber + " " + bytecodeIndex;
+			Object t = type;
+			if (!(t instanceof Type)) {
+				t = ParserToolkit.parseFrameType((String) t);
+				type = t;
+			}
+			return (Type) t;
 		}
 
 		@Override
@@ -727,13 +717,13 @@ class StructTypes {
 
 		public Object frames;
 		public Object truncated;
-		private final int hashCode;
+
+		private boolean isParsed = false;
 
 		@SuppressWarnings("unchecked")
 		public JfrStackTrace(Object frames, Object truncated) {
 			this.frames = frames;
 			this.truncated = truncated;
-			this.hashCode = calcMethodHash();
 		}
 
 		@Override
@@ -753,31 +743,33 @@ class StructTypes {
 
 		@Override
 		public int hashCode() {
-			return hashCode;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) {
-				return true;
-			} else if (obj instanceof JfrStackTrace) {
-				JfrStackTrace ost = (JfrStackTrace) obj;
-				//noinspection ArrayEqualsHashCode
-				return Objects.equals(ost.frames, frames) && Objects.equals(ost.truncated, truncated);
-			}
-			return false;
-		}
-
-		private int calcMethodHash() {
-			// The 'frames' field is used in hashCode and equality computations but may change when parsed
-			// Force parsing the field to make the hashCode and equality computations to perform consistently
-			getFrames();
-
+			ensureParsed();
 			final int prime = 31;
 			int result = 1;
 			result = prime * result + Objects.hashCode(frames);
 			result = prime * result + Objects.hashCode(truncated);
 			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			ensureParsed();
+			if (this == obj) {
+				return true;
+			} else if (obj instanceof JfrStackTrace) {
+				JfrStackTrace ost = (JfrStackTrace) obj;
+				return Objects.equals(ost.frames, frames) && Objects.equals(ost.truncated, truncated);
+			}
+			return false;
+		}
+
+		private void ensureParsed() {
+			if (!isParsed) {
+				// The 'frames' field is used in hashCode and equality computations but may change when parsed
+				// Force parsing the field to make the hashCode and equality computations to perform consistently
+				getFrames();
+				isParsed = true;
+			}
 		}
 	}
 }
