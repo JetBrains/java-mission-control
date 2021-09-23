@@ -722,7 +722,7 @@ class StructTypes {
 
 		public Object frames;
 		public Object truncated;
-		private int hashCode = -1;
+
 		private boolean isParsed = false;
 
 		@SuppressWarnings("unchecked")
@@ -748,10 +748,12 @@ class StructTypes {
 
 		@Override
 		public int hashCode() {
-			if (hashCode != -1) {
-				return hashCode;
-			}
-			return hashCode = calcMethodHash();
+			ensureParsed();
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + Objects.hashCode(frames);
+			result = prime * result + Objects.hashCode(truncated);
+			return result;
 		}
 
 		@Override
@@ -764,11 +766,6 @@ class StructTypes {
 				return Objects.equals(ost.frames, frames) && Objects.equals(ost.truncated, truncated);
 			}
 			return false;
-		}
-
-		private int calcMethodHash() {
-			ensureParsed();
-			return Objects.hash(frames, truncated);
 		}
 
 		private void ensureParsed() {
