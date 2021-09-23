@@ -71,24 +71,21 @@ public final class ParserToolkit {
 	}
 
 	public static IMCFrame.Type parseFrameType(String type) {
-		if ("Interpreted".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.INTERPRETED;
+		switch (type) {
+			case "Interpreted":  //$NON-NLS-1$
+				return IMCFrame.Type.INTERPRETED;
+			case "JIT compiled":  //$NON-NLS-1$
+				return IMCFrame.Type.JIT_COMPILED;
+			case "Inlined":  //$NON-NLS-1$
+				return IMCFrame.Type.INLINED;
+			case "Native":  //$NON-NLS-1$
+				return IMCFrame.Type.NATIVE;
+			case "C++":  //$NON-NLS-1$
+				return IMCFrame.Type.CPP;
+			case "Kernel":  //$NON-NLS-1$
+				return IMCFrame.Type.KERNEL;
+			default:
+				return IMCFrame.Type.UNKNOWN;
 		}
-		if ("JIT compiled".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.JIT_COMPILED;
-		}
-		if ("Inlined".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.INLINED;
-		}
-		if ("Native".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.NATIVE;
-		}
-		if ("C++".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.CPP;
-		}
-		if ("Kernel".equals(type)) { //$NON-NLS-1$
-			return IMCFrame.Type.KERNEL;
-		}
-		return IMCFrame.Type.UNKNOWN;
 	}
 }
