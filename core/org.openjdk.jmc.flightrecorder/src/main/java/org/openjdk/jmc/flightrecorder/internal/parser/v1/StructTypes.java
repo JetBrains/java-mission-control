@@ -619,6 +619,11 @@ class StructTypes {
 		}
 
 		@Override
+		public String toString() {
+			return name + " " + descriptor + " " + getType().getFullName();
+		}
+
+		@Override
 		public int hashCode() {
 			final int prime = 31;
 			int result = 1;
