@@ -44,7 +44,6 @@ public class MCFrame implements IMCFrame {
 	private final Integer m_bci;
 	private final Integer m_frameLineNumber;
 	private final Type m_type;
-	private final String m_rawType;
 
 	/**
 	 * Create a new frame instance.
@@ -59,15 +58,10 @@ public class MCFrame implements IMCFrame {
 	 *            frame compilation type
 	 */
 	public MCFrame(IMCMethod method, Integer bci, Integer frameLineNumber, Type type) {
-		this(method, bci, frameLineNumber, type, type.toString());
-	}
-
-	public MCFrame(IMCMethod method, Integer bci, Integer frameLineNumber, Type type, String rawType) {
 		m_method = method == null ? new MCMethod(null, "", "()V;", null, false) : method; //$NON-NLS-1$ //$NON-NLS-2$
 		m_bci = bci;
 		m_frameLineNumber = frameLineNumber;
 		m_type = type;
-		m_rawType = rawType;
 	}
 
 	@Override
@@ -83,11 +77,6 @@ public class MCFrame implements IMCFrame {
 	@Override
 	final public Integer getFrameLineNumber() {
 		return m_frameLineNumber;
-	}
-
-	@Override
-	public String getRawType() {
-		return m_rawType;
 	}
 
 	@Override

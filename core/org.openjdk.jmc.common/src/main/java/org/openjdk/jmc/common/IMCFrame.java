@@ -117,8 +117,4 @@ public interface IMCFrame {
 	 * @return the compilation type
 	 */
 	Type getType();
-
-	default String getRawType() {
-		return getType().toString();
-	}
 }
