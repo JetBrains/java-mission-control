@@ -209,7 +209,7 @@ public class FormatToolkit {
 		return output.toString();
 	}
 
-	private static String getParameters(String descriptor, boolean qualified) throws Exception {
+	public static String getParameters(String descriptor, boolean qualified) throws Exception {
 		String input = descriptor.substring(descriptor.indexOf(LP) + 1, descriptor.lastIndexOf(RP));
 		StringBuffer output = new StringBuffer(Character.toString(LP));
 		int next = -1;
