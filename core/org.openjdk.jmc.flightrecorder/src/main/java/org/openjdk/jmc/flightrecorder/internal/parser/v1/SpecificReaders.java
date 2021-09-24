@@ -36,7 +36,6 @@ package org.openjdk.jmc.flightrecorder.internal.parser.v1;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 import org.openjdk.jmc.common.unit.ContentType;
@@ -201,7 +200,12 @@ public class SpecificReaders {
 
 			@Override
 			public int hashCode() {
-				return Objects.hash(methodIndex, lineNumber, bytecodeIndex, frameTypeIndex);
+				int result = 1;
+				result = 31 * result + Long.hashCode(methodIndex);
+				result = 31 * result + lineNumber;
+				result = 31 * result + bytecodeIndex;
+				result = 31 * result + Long.hashCode(frameTypeIndex);
+				return result;
 			}
 		}
 	}
