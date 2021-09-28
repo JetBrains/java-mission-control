@@ -697,10 +697,10 @@ class StructTypes {
 
 		@Override
 		public boolean equals(Object obj) {
-			ensureParsed();
 			if (this == obj) {
 				return true;
 			} else if (obj instanceof JfrFrame) {
+				ensureParsed();
 				JfrFrame of = (JfrFrame) obj;
 				return Objects.equals(of.type, type) && Objects.equals(of.method, method)
 						&& Objects.equals(of.lineNumber, lineNumber) && Objects.equals(of.bytecodeIndex, bytecodeIndex);
@@ -758,10 +758,10 @@ class StructTypes {
 
 		@Override
 		public boolean equals(Object obj) {
-			ensureParsed();
 			if (this == obj) {
 				return true;
 			} else if (obj instanceof JfrStackTrace) {
+				ensureParsed();
 				JfrStackTrace ost = (JfrStackTrace) obj;
 				return Objects.equals(ost.frames, frames) && Objects.equals(ost.truncated, truncated);
 			}
