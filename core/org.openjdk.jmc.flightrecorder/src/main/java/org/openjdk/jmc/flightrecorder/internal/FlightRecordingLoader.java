@@ -302,7 +302,7 @@ public final class FlightRecordingLoader {
 	 *            ignored and instead make the method return null
 	 * @return a new chunk loader or null if no more data is available from the chunk supplier
 	 */
-	private static IChunkLoader createChunkLoader(
+	public static IChunkLoader createChunkLoader(
 		IChunkSupplier chunkSupplier, LoaderContext context, byte[] buffer, boolean ignoreTruncatedChunk)
 			throws CouldNotLoadRecordingException, IOException {
 		try {
