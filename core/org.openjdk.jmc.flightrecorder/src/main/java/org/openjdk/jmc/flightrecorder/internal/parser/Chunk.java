@@ -33,6 +33,7 @@
 package org.openjdk.jmc.flightrecorder.internal.parser;
 
 import java.io.DataInput;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -155,7 +156,7 @@ public class Chunk {
 		public ByteBufferWrapper fill(long upToPosition) throws IOException, InvalidJfrFileException {
 			int fillUpTo = getArrayPosition(upToPosition);
 			if (data.limit() < fillUpTo) {
-				throw new InvalidJfrFileException();
+				throw new EOFException();
 			}
 			return data.view(fillUpTo);
 		}
