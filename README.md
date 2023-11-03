@@ -1,3 +1,5 @@
+[![official JetBrains project](https://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+
 # Mission Control
 
 Mission Control is an open source production time profiling and diagnostics tool for Java.
